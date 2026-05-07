@@ -23,6 +23,7 @@ public class SettingsService : ISettingsService
     private const string KeyStartWithWindows = "StartWithWindows";
     private const string KeyMinimizeToTray = "MinimizeToTray";
     private const string KeyRetentionDays = "DataRetentionDays";
+    private const string KeyMinimalMode = "MinimalMode";
     private const string KeyWindowLeft = "WindowLeft";
     private const string KeyWindowTop = "WindowTop";
 
@@ -39,6 +40,7 @@ public class SettingsService : ISettingsService
     public bool StartWithWindows { get; set; } = false;
     public bool MinimizeToTray { get; set; } = true;
     public int DataRetentionDays { get; set; } = 30;
+    public bool MinimalMode { get; set; } = false;
     public double WindowLeft { get; set; } = 100;
     public double WindowTop { get; set; } = 100;
 
@@ -67,6 +69,7 @@ public class SettingsService : ISettingsService
             StartWithWindows = GetBool(settings, KeyStartWithWindows, false);
             MinimizeToTray = GetBool(settings, KeyMinimizeToTray, true);
             DataRetentionDays = GetInt(settings, KeyRetentionDays, 30);
+            MinimalMode = GetBool(settings, KeyMinimalMode, false);
             WindowLeft = GetDouble(settings, KeyWindowLeft, 100);
             WindowTop = GetDouble(settings, KeyWindowTop, 100);
 
@@ -96,6 +99,7 @@ public class SettingsService : ISettingsService
             await _repository.SetValueAsync(KeyStartWithWindows, StartWithWindows.ToString());
             await _repository.SetValueAsync(KeyMinimizeToTray, MinimizeToTray.ToString());
             await _repository.SetValueAsync(KeyRetentionDays, DataRetentionDays.ToString());
+            await _repository.SetValueAsync(KeyMinimalMode, MinimalMode.ToString());
             await _repository.SetValueAsync(KeyWindowLeft, WindowLeft.ToString("F0"));
             await _repository.SetValueAsync(KeyWindowTop, WindowTop.ToString("F0"));
 
@@ -107,6 +111,11 @@ public class SettingsService : ISettingsService
             _logger.Error("Failed to save settings", ex);
             throw;
         }
+    }
+
+    public void NotifySettingsChanged()
+    {
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void ResetToDefaults()
@@ -124,6 +133,7 @@ public class SettingsService : ISettingsService
         StartWithWindows = false;
         MinimizeToTray = true;
         DataRetentionDays = 30;
+        MinimalMode = false;
         WindowLeft = 100;
         WindowTop = 100;
     }

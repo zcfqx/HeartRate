@@ -17,10 +17,12 @@ public interface ISettingsService
     bool StartWithWindows { get; set; }
     bool MinimizeToTray { get; set; }
     int DataRetentionDays { get; set; }
+    bool MinimalMode { get; set; }
     double WindowLeft { get; set; }
     double WindowTop { get; set; }
 
     Task LoadAsync();
     Task SaveAsync();
     void ResetToDefaults();
+    void NotifySettingsChanged();
 }
