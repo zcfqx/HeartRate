@@ -49,6 +49,27 @@ public class BoolToVisibilityConverter : IValueConverter
     }
 }
 
+public class OverlayOpacityToBrushConverter : IValueConverter
+{
+    private static readonly Color BaseColor = (Color)ColorConverter.ConvertFromString("#141422");
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is double opacity)
+        {
+            opacity = Math.Clamp(opacity, 0.0, 1.0);
+            byte alpha = (byte)(179 * opacity);
+            return new SolidColorBrush(Color.FromArgb(alpha, BaseColor.R, BaseColor.G, BaseColor.B));
+        }
+        return new SolidColorBrush(Color.FromArgb(179, BaseColor.R, BaseColor.G, BaseColor.B));
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 public class ConnectionStateToColorConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
