@@ -4,132 +4,582 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="设置" Width="420" Height="560"
+        Title="设置" Width="460" Height="640"
         WindowStartupLocation="CenterOwner"
-        Background="#1A1A2E"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
         Foreground="#E0E0E0"
         ResizeMode="NoResize">
 
-    <Grid Margin="24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Window.Resources>
+        <Style x:Key="SectionCard" TargetType="Border">
+            <Setter Property="Background" Value="#0AFFFFFF"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
 
-        <TextBlock Grid.Row="0" Text="设置"
-                   FontSize="24" FontWeight="SemiBold" Foreground="White"
-                   Margin="0,0,0,20"/>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#818CF8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <TextBlock Text="连接" Foreground="#4DFFFFFF" FontSize="11" Margin="0,0,0,8"/>
-                <CheckBox Content="自动连接上次设备"
-                          IsChecked="{Binding AutoConnect}"
-                          Foreground="#B3FFFFFF" Margin="0,0,0,8"/>
+        <Style x:Key="SettingLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#B3FFFFFF"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
 
-                <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,12"/>
+        <Style x:Key="SettingDescription" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#66FFFFFF"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,2,0,0"/>
+        </Style>
 
-                <TextBlock Text="警报" Foreground="#4DFFFFFF" FontSize="11" Margin="0,0,0,8"/>
-                <CheckBox Content="启用通知提醒"
-                          IsChecked="{Binding EnableNotifications}"
-                          Foreground="#B3FFFFFF" Margin="0,0,0,8"/>
-                <CheckBox Content="启用声音警报"
-                          IsChecked="{Binding EnableSoundAlert}"
-                          Foreground="#B3FFFFFF" Margin="0,0,0,8"/>
+        <Style x:Key="ToggleSwitch" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="Track" Width="40" Height="22" CornerRadius="11"
+                                    Background="#33FFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1">
+                                <Border x:Name="Thumb" Width="18" Height="18" CornerRadius="9"
+                                        Background="#99FFFFFF" HorizontalAlignment="Left" Margin="1"/>
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="#6366F1"/>
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#818CF8"/>
+                                <Setter TargetName="Thumb" Property="Background" Value="White"/>
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <Grid Margin="0,8,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="80"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="心率上限阈值" Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Text="{Binding HighHeartRateThreshold}"
-                             Background="#0DFFFFFF" Foreground="White" BorderBrush="#33FFFFFF"
-                             Padding="4" HorizontalContentAlignment="Center"/>
-                </Grid>
+        <Style x:Key="InputTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#6366F1"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#4DFFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="80"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="心率下限阈值" Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Text="{Binding LowHeartRateThreshold}"
-                             Background="#0DFFFFFF" Foreground="White" BorderBrush="#33FFFFFF"
-                             Padding="4" HorizontalContentAlignment="Center"/>
-                </Grid>
+        <Style x:Key="ComboBoxItemDefault" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBg" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBg" Property="Background" Value="#1AFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBg" Property="Background" Value="#336366F1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,12"/>
+        <Style x:Key="InputComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ComboBoxItemDefault}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6" Padding="0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter x:Name="ContentSite"
+                                                      Grid.Column="0"
+                                                      Margin="8,4,0,4"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      IsHitTestVisible="False"/>
+                                    <Border x:Name="ArrowContainer" Grid.Column="1"
+                                            Width="28" Background="Transparent"
+                                            CornerRadius="0,6,6,0">
+                                        <Path x:Name="Arrow"
+                                              Data="M0,0 L4,4 L8,0"
+                                              Stroke="#99FFFFFF" StrokeThickness="1.5"
+                                              Width="8" Height="5"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Stretch="Uniform"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border x:Name="DropDownBorder"
+                                        Background="#222238"
+                                        BorderBrush="#33FFFFFF"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="200"
+                                        Margin="0,2,0,0">
+                                    <ScrollViewer>
+                                        <StackPanel>
+                                            <ItemsPresenter/>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#6366F1"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#4DFFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <TextBlock Text="外观" Foreground="#4DFFFFFF" FontSize="11" Margin="0,0,0,8"/>
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="120"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="主题" Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                    <ComboBox Grid.Column="1" SelectedItem="{Binding Theme}"
-                              Background="#0DFFFFFF" Foreground="White" BorderBrush="#33FFFFFF">
-                        <ComboBoxItem Content="深色" IsSelected="True"/>
-                        <ComboBoxItem Content="浅色"/>
-                    </ComboBox>
-                </Grid>
+        <Style x:Key="ThemedScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid>
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#33FFFFFF" CornerRadius="3"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="120"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="窗口不透明度" Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                    <Slider Grid.Column="1" Minimum="0.3" Maximum="1.0"
-                            Value="{Binding OverlayOpacity}" TickFrequency="0.1"
-                            IsSnapToTickEnabled="True"/>
-                </Grid>
+        <ControlTemplate x:Key="ThemedScrollViewerTemplate" TargetType="ScrollViewer">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ScrollContentPresenter Grid.Column="0" CanContentScroll="True"
+                                        Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                <ScrollBar x:Name="PART_VerticalScrollBar"
+                           Grid.Column="1"
+                           Value="{TemplateBinding VerticalOffset}"
+                           Maximum="{TemplateBinding ScrollableHeight}"
+                           ViewportSize="{TemplateBinding ViewportHeight}"
+                           Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
+                           Style="{StaticResource ThemedScrollBar}"/>
+            </Grid>
+        </ControlTemplate>
 
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="120"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="界面语言" Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                    <ComboBox Grid.Column="1" SelectedItem="{Binding Language}"
-                              Background="#0DFFFFFF" Foreground="White" BorderBrush="#33FFFFFF">
-                        <ComboBoxItem Content="简体中文" IsSelected="True"/>
-                        <ComboBoxItem Content="English"/>
-                    </ComboBox>
-                </Grid>
+        <Style x:Key="ThemedScrollViewer" TargetType="ScrollViewer">
+            <Setter Property="Template" Value="{StaticResource ThemedScrollViewerTemplate}"/>
+        </Style>
 
-                <Border Height="1" Background="#1AFFFFFF" Margin="0,12,0,12"/>
+        <Style x:Key="SliderStyle" TargetType="Slider">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Track x:Name="PART_Track" Height="6">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="#6366F1" CornerRadius="3"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="#33FFFFFF" CornerRadius="3"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="16" Height="16">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="White" Stroke="#6366F1" StrokeThickness="2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <TextBlock Text="系统" Foreground="#4DFFFFFF" FontSize="11" Margin="0,0,0,8"/>
-                <CheckBox Content="开机自动启动"
-                          IsChecked="{Binding StartWithWindows}"
-                          Foreground="#B3FFFFFF" Margin="0,0,0,8"/>
-                <CheckBox Content="最小化到系统托盘"
-                          IsChecked="{Binding MinimizeToTray}"
-                          Foreground="#B3FFFFFF" Margin="0,0,0,8"/>
+        <Style x:Key="FooterButton" TargetType="Button">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                <Grid Margin="0,8,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="80"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="数据保留天数" Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="1" Text="{Binding DataRetentionDays}"
-                             Background="#0DFFFFFF" Foreground="White" BorderBrush="#33FFFFFF"
-                             Padding="4" HorizontalContentAlignment="Center"/>
-                </Grid>
+        <Style x:Key="TitleBarButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#99FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4"
+                                Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="#1A1A2E"
+            CornerRadius="10"
+            BorderBrush="#33FFFFFF"
+            BorderThickness="1"
+            Margin="4">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="16,0,8,0" MouseLeftButtonDown="OnTitleBarMouseDown" Background="Transparent">
+                <TextBlock Text="设置" FontSize="15" FontWeight="SemiBold" Foreground="White"
+                           VerticalAlignment="Center"/>
+                <Button Style="{StaticResource TitleBarButton}" Click="OnCloseClick"
+                        ToolTip="关闭" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                          Fill="#EF4444" Width="14" Height="14"/>
+                </Button>
+            </Grid>
+
+            <StackPanel Grid.Row="1" Margin="16,0,16,16">
+                <TextBlock Text="自定义心率监控应用" Foreground="#66FFFFFF" FontSize="12"/>
             </StackPanel>
-        </ScrollViewer>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="恢复默认" Command="{Binding ResetDefaultsCommand}"
-                    Background="Transparent" Foreground="#99FFFFFF" BorderBrush="#33FFFFFF"
-                    Padding="12,6" Margin="0,0,8,0" Cursor="Hand"/>
-            <Button Content="保存" Command="{Binding SaveCommand}"
-                    Background="#6366F1" Foreground="White" BorderThickness="0"
-                    Padding="16,6" Cursor="Hand"/>
-        </StackPanel>
-    </Grid>
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Margin="12,0,12,0"
+                          Style="{StaticResource ThemedScrollViewer}">
+                <StackPanel>
+                    <Border Style="{StaticResource SectionCard}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="连接"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="自动连接上次设备"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}" Text="启动时自动重连上次使用的蓝牙设备"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding AutoConnect}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SectionCard}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="心率警报"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="通知提醒"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}" Text="心率超出阈值时弹出系统通知"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding EnableNotifications}" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="声音警报"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}" Text="心率超出阈值时播放提示音"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding EnableSoundAlert}" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Border Height="1" Background="#1AFFFFFF" Margin="0,0,0,16"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource SettingLabel}" Text="心率上限阈值"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource InputTextBox}"
+                                         Text="{Binding HighHeartRateThreshold}"/>
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource SettingLabel}" Text="心率下限阈值"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource InputTextBox}"
+                                         Text="{Binding LowHeartRateThreshold}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SectionCard}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="外观"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="130"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource SettingLabel}" Text="主题"/>
+                                <ComboBox Grid.Column="1" Style="{StaticResource InputComboBox}"
+                                          SelectedItem="{Binding Theme}">
+                                    <ComboBoxItem Content="深色" IsSelected="True"/>
+                                    <ComboBoxItem Content="浅色"/>
+                                </ComboBox>
+                            </Grid>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="窗口不透明度"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}">
+                                        <TextBlock.Text>
+                                            <Binding Path="OverlayOpacity" StringFormat="{}当前: {0:P0}"/>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding OverlayOpacity, StringFormat={}{0:P0}}"
+                                           Foreground="#99FFFFFF" FontSize="13" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            </Grid>
+                            <Slider Style="{StaticResource SliderStyle}"
+                                    Minimum="0.3" Maximum="1.0" Value="{Binding OverlayOpacity, UpdateSourceTrigger=PropertyChanged}"
+                                    TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,0,0,16"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="130"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource SettingLabel}" Text="界面语言"/>
+                                <ComboBox Grid.Column="1" Style="{StaticResource InputComboBox}"
+                                          SelectedItem="{Binding Language}">
+                                    <ComboBoxItem Content="简体中文" IsSelected="True"/>
+                                    <ComboBoxItem Content="English"/>
+                                </ComboBox>
+                            </Grid>
+                            <Border Height="1" Background="#1AFFFFFF" Margin="0,0,0,16"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="极简模式"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}" Text="仅显示心跳状态和速度数据"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding MinimalMode}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SectionCard}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" Text="系统"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="开机自动启动"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}" Text="Windows启动时自动运行应用"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding StartWithWindows}" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="最小化到系统托盘"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}" Text="关闭窗口时最小化到通知区域"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding MinimizeToTray}" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Border Height="1" Background="#1AFFFFFF" Margin="0,0,0,16"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="90"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SettingLabel}" Text="数据保留天数"/>
+                                    <TextBlock Style="{StaticResource SettingDescription}" Text="超出天数的历史数据将自动清理"/>
+                                </StackPanel>
+                                <TextBox Grid.Column="1" Style="{StaticResource InputTextBox}"
+                                         Text="{Binding DataRetentionDays}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Grid Grid.Row="3" Margin="16,16,16,16">
+                <Button Content="恢复默认" Command="{Binding ResetDefaultsCommand}"
+                        Style="{StaticResource FooterButton}"
+                        Background="Transparent" Foreground="#99FFFFFF" BorderBrush="#33FFFFFF"
+                        HorizontalAlignment="Left"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="取消" Click="OnCancelClick"
+                            Style="{StaticResource FooterButton}"
+                            Background="Transparent" Foreground="#99FFFFFF" BorderBrush="#33FFFFFF"
+                            Margin="0,0,8,0"/>
+                    <Button Content="保存" Command="{Binding SaveCommand}"
+                            Style="{StaticResource FooterButton}"
+                            Background="#6366F1" Foreground="White" BorderThickness="0"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

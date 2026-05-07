@@ -27,6 +27,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private double _overlayOpacity = 1.0;
 
+    partial void OnOverlayOpacityChanged(double value)
+    {
+        _settingsService.OverlayOpacity = value;
+        _settingsService.NotifySettingsChanged();
+    }
+
     [ObservableProperty]
     private string _theme = "深色";
 
@@ -41,6 +47,9 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private int _dataRetentionDays = 30;
+
+    [ObservableProperty]
+    private bool _minimalMode;
 
     public SettingsViewModel(ISettingsService settingsService, ILogger logger)
     {
@@ -62,6 +71,7 @@ public partial class SettingsViewModel : ObservableObject
         StartWithWindows = _settingsService.StartWithWindows;
         MinimizeToTray = _settingsService.MinimizeToTray;
         DataRetentionDays = _settingsService.DataRetentionDays;
+        MinimalMode = _settingsService.MinimalMode;
     }
 
     [RelayCommand]
@@ -80,6 +90,7 @@ public partial class SettingsViewModel : ObservableObject
             _settingsService.StartWithWindows = StartWithWindows;
             _settingsService.MinimizeToTray = MinimizeToTray;
             _settingsService.DataRetentionDays = DataRetentionDays;
+            _settingsService.MinimalMode = MinimalMode;
 
             await _settingsService.SaveAsync();
             _logger.Info("设置已保存");
