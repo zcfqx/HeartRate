@@ -20,6 +20,7 @@
         <converters:HeartRateToColorConverter x:Key="HeartRateToColor"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
         <converters:ConnectionStateToColorConverter x:Key="ConnectionStateToColor"/>
+        <converters:OverlayOpacityToBrushConverter x:Key="OpacityToBrush"/>
 
         <Style x:Key="TitleBarButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -47,13 +48,26 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="MainBorder" TargetType="Border">
+            <Setter Property="Background" Value="{Binding OverlayOpacity, Converter={StaticResource OpacityToBrush}}"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="4"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMinimalMode}" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="CornerRadius" Value="0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
-    <Border Background="#B3141422"
-            CornerRadius="16"
-            BorderBrush="#33FFFFFF"
-            BorderThickness="1"
-            Margin="4">
+    <Border Style="{StaticResource MainBorder}">
 
         <Grid>
             <Grid.RowDefinitions>
@@ -69,7 +83,8 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Margin="12,4,8,0" x:Name="TitleBar"
-                  MouseLeftButtonDown="OnTitleBarMouseDown" Background="Transparent">
+                  MouseLeftButtonDown="OnTitleBarMouseDown" Background="Transparent"
+                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <Ellipse Width="8" Height="8"
                          Fill="{Binding ConnectionStatus, Converter={StaticResource ConnectionStateToColor}}"
                          HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0"/>
@@ -78,6 +93,11 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Style="{StaticResource TitleBarButton}" Click="OnMinimalModeToggle" ToolTip="极简模式">
+                        <Path x:Name="MinimalModeIcon"
+                              Data="M3,3H21V5H3V3M3,7H15V9H3V7M3,11H21V13H3V11M3,15H15V17H3V15M3,19H21V21H3V19Z"
+                              Fill="#99FFFFFF" Width="14" Height="14"/>
+                    </Button>
                     <Button Style="{StaticResource TitleBarButton}" Click="OnScanClick" ToolTip="扫描 / 停止">
                         <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"
                               Fill="{Binding ConnectionStatus, Converter={StaticResource ConnectionStateToColor}}" Width="14" Height="14"/>
@@ -96,11 +116,17 @@
                 </StackPanel>
             </Grid>
 
+            <Grid Grid.Row="0" Background="Transparent"
+                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}}"
+                  MouseLeftButtonDown="OnMinimalAreaMouseDown" Cursor="SizeAll"/>
+
             <TextBlock Grid.Row="1" Text="{Binding DeviceName}"
                        Foreground="#66FFFFFF" FontSize="10"
-                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                       HorizontalAlignment="Center" Margin="0,2,0,0"
+                       Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
 
-            <Viewbox Grid.Row="2" Height="70" Margin="0,4,0,0">
+            <Viewbox Grid.Row="2" Height="70" Margin="0,4,0,0"
+                     Cursor="Hand" MouseLeftButtonDown="OnBpmAreaClick">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <TextBlock Text="{Binding BpmText}"
                                Foreground="{Binding CurrentHeartRate, Converter={StaticResource HeartRateToColor}}"
@@ -113,14 +139,16 @@
                 </StackPanel>
             </Viewbox>
 
-            <Viewbox Grid.Row="3" Height="24" Margin="0,2,0,0">
+            <Viewbox Grid.Row="3" Height="24" Margin="0,2,0,0"
+                     Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <TextBlock Text="{Binding HeartRateZone}"
                            Foreground="{Binding ZoneColor}"
                            FontSize="18" FontWeight="SemiBold"
                            HorizontalAlignment="Center"/>
             </Viewbox>
 
-            <Grid Grid.Row="4" Margin="20,12,20,0">
+            <Grid Grid.Row="4" Margin="20,12,20,0"
+                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -151,7 +179,8 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="5" Margin="20,8,20,0">
+            <Grid Grid.Row="5" Margin="20,8,20,0"
+                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -172,7 +201,8 @@
                 </StackPanel>
             </Grid>
 
-            <Border Grid.Row="6" Background="#1AFFFFFF" CornerRadius="8" Margin="12,12,12,0" Padding="0">
+            <Border Grid.Row="6" Background="#1AFFFFFF" CornerRadius="8" Margin="12,12,12,0" Padding="0"
+                    Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <lvc:CartesianChart Series="{Binding HeartRateSeries}"
                                     XAxes="{Binding XAxes}"
                                     YAxes="{Binding YAxes}"
@@ -182,9 +212,11 @@
 
             <TextBlock Grid.Row="7" Text="{Binding LastUpdate, StringFormat='最后更新: {0}'}"
                        Foreground="#4DFFFFFF" FontSize="10" HorizontalAlignment="Center"
-                       Margin="12,6,12,0"/>
+                       Margin="12,6,12,0"
+                       Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
 
-            <Grid Grid.Row="8" Margin="12,4,12,10">
+            <Grid Grid.Row="8" Margin="12,4,12,10"
+                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"
                       Fill="#EF4444" Width="14" Height="14"
                       HorizontalAlignment="Center"/>

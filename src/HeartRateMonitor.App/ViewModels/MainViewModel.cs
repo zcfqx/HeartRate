@@ -83,6 +83,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private double _maxChartValue = 180;
 
+    [ObservableProperty]
+    private double _overlayOpacity = 1.0;
+
+    [ObservableProperty]
+    private bool _isMinimalMode;
+
     public ISeries[] HeartRateSeries { get; }
     public Axis[] XAxes { get; }
     public Axis[] YAxes { get; }
@@ -94,6 +100,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ICommand StartScanCommand { get; }
     public ICommand StopScanCommand { get; }
     public ICommand ToggleScanCommand { get; }
+    public ICommand ToggleMinimalModeCommand { get; }
 
     public MainViewModel(
         IBleService bleService,
@@ -111,6 +118,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _bleService.HeartRateReceived += OnHeartRateReceived;
         _bleService.ConnectionStateChanged += OnConnectionStateChanged;
+        _settingsService.SettingsChanged += OnSettingsChanged;
+
+        OverlayOpacity = _settingsService.OverlayOpacity;
+        IsMinimalMode = _settingsService.MinimalMode;
 
         HeartRateSeries =
         [
@@ -149,6 +160,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
         StartScanCommand = new AsyncRelayCommand(StartScanAsync);
         StopScanCommand = new AsyncRelayCommand(StopScanAsync);
         ToggleScanCommand = new AsyncRelayCommand(ToggleScanAsync);
+        ToggleMinimalModeCommand = new RelayCommand(ToggleMinimalMode);
+    }
+
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        _dispatcher.BeginInvoke(() =>
+        {
+            OverlayOpacity = _settingsService.OverlayOpacity;
+            IsMinimalMode = _settingsService.MinimalMode;
+        });
+    }
+
+    private void ToggleMinimalMode()
+    {
+        IsMinimalMode = !IsMinimalMode;
+        _settingsService.MinimalMode = IsMinimalMode;
+        _ = _settingsService.SaveAsync();
     }
 
     private void OnHeartRateReceived(object? sender, HeartRateChangedEventArgs e)
@@ -342,5 +370,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         _bleService.HeartRateReceived -= OnHeartRateReceived;
         _bleService.ConnectionStateChanged -= OnConnectionStateChanged;
+        _settingsService.SettingsChanged -= OnSettingsChanged;
     }
 }

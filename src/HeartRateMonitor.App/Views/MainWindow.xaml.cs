@@ -40,6 +40,30 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnMinimalModeToggle(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+        {
+            vm.ToggleMinimalModeCommand.Execute(null);
+        }
+    }
+
+    private void OnBpmAreaClick(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+        {
+            vm.ToggleMinimalModeCommand.Execute(null);
+        }
+    }
+
+    private void OnMinimalAreaMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
+    }
+
     private void OnScanClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel vm)
