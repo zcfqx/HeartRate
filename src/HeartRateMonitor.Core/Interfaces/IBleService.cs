@@ -13,6 +13,7 @@ public interface IBleService
     event EventHandler<HeartRateChangedEventArgs>? HeartRateReceived;
     event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
     event EventHandler<HeartRateAlertEventArgs>? HeartRateAlert;
+    event EventHandler<BleDevice>? DeviceDiscovered;
 
     Task<bool> RequestPermissionAsync();
     Task StartScanningAsync();

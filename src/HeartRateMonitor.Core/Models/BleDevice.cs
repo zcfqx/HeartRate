@@ -6,4 +6,5 @@ public class BleDevice
     public string DeviceName { get; set; } = string.Empty;
     public int SignalStrength { get; set; }
     public bool IsConnectable { get; set; }
+    public ulong BluetoothAddress { get; set; }
 }

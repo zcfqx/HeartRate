@@ -167,7 +167,7 @@
 
                 <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                     <TextBlock Text="平均" Foreground="#4DFFFFFF" FontSize="9" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding AverageHeartRate}" Foreground="#99FFFFFF" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding AvgHeartRate}" Foreground="#99FFFFFF" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <Line Grid.Column="3" X1="0" Y1="4" X2="0" Y2="36"
@@ -189,7 +189,7 @@
 
                 <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                     <TextBlock Text="RR间期" Foreground="#4DFFFFFF" FontSize="9" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding RRInterval, StringFormat={}{0:F3}s}" Foreground="#99FFFFFF" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding RrInterval}" Foreground="#99FFFFFF" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <Line Grid.Column="1" X1="0" Y1="4" X2="0" Y2="30"

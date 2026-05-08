@@ -1,36 +1,46 @@
 using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using HeartRateMonitor.Core.Enums;
-using HeartRateMonitor.Core.Events;
-using HeartRateMonitor.Core.Interfaces;
-using HeartRateMonitor.Core.Models;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
+using HeartRateMonitor.Core.Enums;
+using HeartRateMonitor.Core.Events;
+using HeartRateMonitor.Core.Interfaces;
+using HeartRateMonitor.Core.Models;
+using HeartRateMonitor.App.Views;
 
 namespace HeartRateMonitor.App.ViewModels;
 
-public partial class MainViewModel : ObservableObject, IDisposable
+public partial class MainViewModel : ObservableObject
 {
-    private readonly IBleService _bleService;
     private readonly IHeartRateService _heartRateService;
+    private readonly IBleService _bleService;
     private readonly ISettingsService _settingsService;
-    private readonly IDataService _dataService;
     private readonly ILogger _logger;
-    private readonly Dispatcher _dispatcher;
 
-    private readonly ObservableCollection<DateTimePoint> _heartRatePoints = [];
-    private readonly List<int> _recentRates = [];
-    private const int MaxChartPoints = 120;
+    private readonly Dispatcher _dispatcher;
+    private readonly ObservableCollection<DateTimePoint> _heartRateValues = new();
+    private readonly ObservableCollection<DateTimePoint> _rrValues = new();
 
     [ObservableProperty]
     private int _currentHeartRate;
+
+    [ObservableProperty]
+    private int _minHeartRate;
+
+    [ObservableProperty]
+    private int _maxHeartRate;
+
+    [ObservableProperty]
+    private double _avgHeartRate;
+
+    [ObservableProperty]
+    private string _rrInterval = "0 ms";
 
     [ObservableProperty]
     private string _connectionStatus = "未连接";
@@ -39,37 +49,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _connectionStatusIcon = "未连接";
 
     [ObservableProperty]
-    private string _deviceName = "--";
-
-    [ObservableProperty]
-    private string _bpmText = "--";
-
-    [ObservableProperty]
-    private string _lastUpdate = "--";
-
-    [ObservableProperty]
-    private int _averageHeartRate;
-
-    [ObservableProperty]
-    private int _maxHeartRate;
-
-    [ObservableProperty]
-    private int _minHeartRate;
-
-    [ObservableProperty]
-    private double _rRInterval;
-
-    [ObservableProperty]
     private string _signalStrength = "无";
 
     [ObservableProperty]
-    private bool _isConnected;
-
-    [ObservableProperty]
-    private bool _isScanning;
-
-    [ObservableProperty]
-    private string _heartRateColor = "#FFFFFF";
+    private string _lastUpdate = "00:00:00";
 
     [ObservableProperty]
     private string _heartRateZone = "静息";
@@ -78,233 +61,206 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _zoneColor = "#6366F1";
 
     [ObservableProperty]
-    private double _minChartValue = 40;
+    private bool _isSensorContact;
 
     [ObservableProperty]
-    private double _maxChartValue = 180;
+    private double _avgRrInterval;
 
     [ObservableProperty]
-    private double _overlayOpacity = 1.0;
+    private bool _isConnected;
+
+    [ObservableProperty]
+    private bool _isScanning;
 
     [ObservableProperty]
     private bool _isMinimalMode;
 
+    [ObservableProperty]
+    private string _bpmText = "---";
+
+    [ObservableProperty]
+    private string _deviceName = "";
+
+    [ObservableProperty]
+    private double _overlayOpacity = 0.7;
+
+    [ObservableProperty]
+    private BleDevice? _connectedDevice;
+
+    [ObservableProperty]
+    private ObservableCollection<BleDevice> _discoveredDevices = new();
+
     public ISeries[] HeartRateSeries { get; }
-    public Axis[] XAxes { get; }
-    public Axis[] YAxes { get; }
+    public ISeries[] RrSeries { get; }
 
-    public ObservableCollection<BleDevice> DiscoveredDevices { get; } = [];
+    public Axis[] XAxes { get; } =
+    {
+        new Axis
+        {
+            Labeler = value => new DateTime((long)value).ToString("HH:mm:ss"),
+            UnitWidth = TimeSpan.FromSeconds(1).Ticks,
+            LabelsPaint = new SolidColorPaint(SKColors.WhiteSmoke),
+            SeparatorsPaint = new SolidColorPaint(SKColors.WhiteSmoke),
+            AnimationsSpeed = TimeSpan.FromMilliseconds(0)
+        }
+    };
 
-    public ICommand ConnectCommand { get; }
-    public ICommand DisconnectCommand { get; }
-    public ICommand StartScanCommand { get; }
-    public ICommand StopScanCommand { get; }
-    public ICommand ToggleScanCommand { get; }
-    public ICommand ToggleMinimalModeCommand { get; }
+    public Axis[] YAxes { get; } =
+    {
+        new Axis
+        {
+            MinLimit = 40,
+            MaxLimit = 220,
+            LabelsPaint = new SolidColorPaint(SKColors.WhiteSmoke),
+            SeparatorsPaint = new SolidColorPaint(SKColors.WhiteSmoke)
+        }
+    };
 
     public MainViewModel(
-        IBleService bleService,
         IHeartRateService heartRateService,
+        IBleService bleService,
         ISettingsService settingsService,
-        IDataService dataService,
         ILogger logger)
     {
-        _bleService = bleService;
         _heartRateService = heartRateService;
+        _bleService = bleService;
         _settingsService = settingsService;
-        _dataService = dataService;
         _logger = logger;
-        _dispatcher = Application.Current.Dispatcher;
+
+        _dispatcher = Dispatcher.CurrentDispatcher;
+
+        HeartRateSeries = new ISeries[]
+        {
+            new LineSeries<DateTimePoint>
+            {
+                Values = _heartRateValues,
+                Fill = null,
+                Stroke = new SolidColorPaint(SKColors.CornflowerBlue, 2),
+                GeometryStroke = null,
+                GeometryFill = null,
+                LineSmoothness = 0.5
+            }
+        };
+
+        RrSeries = new ISeries[]
+        {
+            new LineSeries<DateTimePoint>
+            {
+                Values = _rrValues,
+                Fill = null,
+                Stroke = new SolidColorPaint(SKColors.MediumPurple, (float)1.5),
+                GeometryStroke = null,
+                GeometryFill = null,
+                LineSmoothness = 0.3
+            }
+        };
 
         _bleService.HeartRateReceived += OnHeartRateReceived;
         _bleService.ConnectionStateChanged += OnConnectionStateChanged;
-        _settingsService.SettingsChanged += OnSettingsChanged;
+        _bleService.DeviceDiscovered += OnDeviceDiscovered;
 
         OverlayOpacity = _settingsService.OverlayOpacity;
-        IsMinimalMode = _settingsService.MinimalMode;
 
-        HeartRateSeries =
-        [
-            new LineSeries<DateTimePoint>
-            {
-                Values = _heartRatePoints,
-                Stroke = new SolidColorPaint(new SKColor(239, 68, 68), 2),
-                Fill = new SolidColorPaint(new SKColor(239, 68, 68, 50)),
-                GeometryFill = null,
-                GeometryStroke = null,
-                LineSmoothness = 0.5
-            }
-        ];
-
-        XAxes =
-        [
-            new Axis
-            {
-                IsVisible = false,
-                Labeler = value => new DateTime((long)value).ToString("HH:mm:ss")
-            }
-        ];
-
-        YAxes =
-        [
-            new Axis
-            {
-                IsVisible = false,
-                MinLimit = 40,
-                MaxLimit = 180
-            }
-        ];
-
-        ConnectCommand = new AsyncRelayCommand<BleDevice?>(ConnectAsync);
-        DisconnectCommand = new AsyncRelayCommand(DisconnectAsync);
-        StartScanCommand = new AsyncRelayCommand(StartScanAsync);
-        StopScanCommand = new AsyncRelayCommand(StopScanAsync);
-        ToggleScanCommand = new AsyncRelayCommand(ToggleScanAsync);
-        ToggleMinimalModeCommand = new RelayCommand(ToggleMinimalMode);
+        _ = LoadDeviceInfoAsync();
     }
 
-    private void OnSettingsChanged(object? sender, EventArgs e)
+    private void OnDeviceDiscovered(object? sender, BleDevice device)
     {
-        _dispatcher.BeginInvoke(() =>
+        _dispatcher.Invoke(() =>
         {
-            OverlayOpacity = _settingsService.OverlayOpacity;
-            IsMinimalMode = _settingsService.MinimalMode;
+            if (DiscoveredDevices.All(d => d.DeviceId != device.DeviceId))
+            {
+                DiscoveredDevices.Add(device);
+            }
         });
     }
 
+    [RelayCommand]
     private void ToggleMinimalMode()
     {
         IsMinimalMode = !IsMinimalMode;
-        _settingsService.MinimalMode = IsMinimalMode;
-        _ = _settingsService.SaveAsync();
     }
 
-    private void OnHeartRateReceived(object? sender, HeartRateChangedEventArgs e)
+    [RelayCommand]
+    private void ShowDevicePicker()
     {
-        _dispatcher.BeginInvoke(() =>
+        var picker = App.Services?.GetService(typeof(DevicePickerWindow)) as DevicePickerWindow;
+        if (picker != null)
         {
-            var data = e.Data;
-            CurrentHeartRate = data.HeartRate;
-            BpmText = data.HeartRate.ToString();
-            LastUpdate = data.Timestamp.ToString("HH:mm:ss");
-
-            if (data.RRInterval.HasValue)
-            {
-                RRInterval = Math.Round(data.RRInterval.Value / 1000.0, 3);
-            }
-
-            _recentRates.Add(data.HeartRate);
-            if (_recentRates.Count > 100) _recentRates.RemoveAt(0);
-
-            AverageHeartRate = (int)_recentRates.Average();
-            MaxHeartRate = _recentRates.Max();
-            MinHeartRate = _recentRates.Min();
-
-            UpdateHeartRateColor(data.HeartRate);
-            UpdateChart(data);
-
-            _ = _dataService.SaveHeartRateRecordAsync(data, _bleService.ConnectedDevice?.DeviceId);
-        });
-    }
-
-    private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
-    {
-        _dispatcher.BeginInvoke(() =>
-        {
-            ConnectionStatus = e.State switch
-            {
-                ConnectionState.Disconnected => "未连接",
-                ConnectionState.Scanning => "扫描中...",
-                ConnectionState.Connecting => "连接中...",
-                ConnectionState.Connected => "已连接",
-                ConnectionState.Reconnecting => "重连中...",
-                _ => "未知"
-            };
-
-            ConnectionStatusIcon = e.State switch
-            {
-                ConnectionState.Disconnected => "未连接",
-                ConnectionState.Scanning => "扫描中",
-                ConnectionState.Connecting => "连接中",
-                ConnectionState.Connected => "已连接",
-                ConnectionState.Reconnecting => "重连中",
-                _ => "未知"
-            };
-
-            IsConnected = e.State == ConnectionState.Connected;
-            IsScanning = e.State == ConnectionState.Scanning;
-
-            if (e.DeviceName != null)
-            {
-                DeviceName = e.DeviceName;
-            }
-
-            if (e.State == ConnectionState.Disconnected)
-            {
-                BpmText = "--";
-                CurrentHeartRate = 0;
-            }
-        });
-    }
-
-    private void UpdateHeartRateColor(int heartRate)
-    {
-        HeartRateColor = heartRate switch
-        {
-            < 100 => "#FFFFFF",
-            < 140 => "#22C55E",
-            < 170 => "#F59E0B",
-            < 200 => "#F97316",
-            _ => "#EF4444"
-        };
-
-        (HeartRateZone, ZoneColor) = heartRate switch
-        {
-            < 100 => ("静息", "#6366F1"),
-            < 140 => ("燃脂", "#22C55E"),
-            < 170 => ("有氧", "#F59E0B"),
-            < 200 => ("极限", "#F97316"),
-            _ => ("最大", "#EF4444")
-        };
-    }
-
-    private void UpdateChart(HeartRateData data)
-    {
-        _heartRatePoints.Add(new DateTimePoint(data.Timestamp, data.HeartRate));
-
-        while (_heartRatePoints.Count > MaxChartPoints)
-        {
-            _heartRatePoints.RemoveAt(0);
-        }
-
-        if (_heartRatePoints.Count > 1)
-        {
-            var min = _heartRatePoints.Min(p => p.Value ?? 0);
-            var max = _heartRatePoints.Max(p => p.Value ?? 0);
-            MinChartValue = Math.Max(40, min - 10);
-            MaxChartValue = Math.Min(220, max + 10);
-            YAxes[0].MinLimit = MinChartValue;
-            YAxes[0].MaxLimit = MaxChartValue;
+            picker.Owner = Application.Current.MainWindow;
+            picker.ShowDialog();
         }
     }
 
+    [RelayCommand]
+    private async Task ToggleScanAsync()
+    {
+        if (IsScanning)
+        {
+            await StopScanAsync();
+        }
+        else
+        {
+            await StartScanAsync();
+        }
+    }
+
+    private async Task StartScanAsync()
+    {
+        try
+        {
+            DiscoveredDevices.Clear();
+            await _bleService.StartScanningAsync();
+            IsScanning = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("启动扫描失败", ex);
+            IsScanning = false;
+            UpdateState(ConnectionState.Disconnected);
+        }
+    }
+
+    private async Task StopScanAsync()
+    {
+        try
+        {
+            await _bleService.StopScanningAsync();
+            IsScanning = false;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("停止扫描失败", ex);
+        }
+    }
+
+    [RelayCommand]
     private async Task ConnectAsync(BleDevice? device)
     {
         if (device == null) return;
+
         try
         {
+            await StopScanAsync();
+
+            _logger.Info($"正在连接设备: {device.DeviceName}");
             await _bleService.ConnectAsync(device);
+
             _settingsService.LastDeviceId = device.DeviceId;
-            _settingsService.LastDeviceName = device.DeviceName;
             await _settingsService.SaveAsync();
-            await _dataService.SaveDeviceInfoAsync(device);
         }
         catch (Exception ex)
         {
             _logger.Error("连接设备失败", ex);
+            _dispatcher.Invoke(() =>
+            {
+                MessageBox.Show($"连接设备失败: {ex.Message}", "连接错误",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            });
         }
     }
 
+    [RelayCommand]
     private async Task DisconnectAsync()
     {
         try
@@ -317,59 +273,134 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task StartScanAsync()
+    private void OnHeartRateReceived(object? sender, HeartRateChangedEventArgs e)
+    {
+        _dispatcher.Invoke(() =>
+        {
+            var data = e.Data;
+            CurrentHeartRate = data.HeartRate;
+            BpmText = data.HeartRate.ToString();
+            RrInterval = data.RRInterval > 0 ? $"{data.RRInterval:F1} ms" : "0 ms";
+            IsSensorContact = data.IsSensorContact;
+            LastUpdate = data.Timestamp.ToString("HH:mm:ss");
+
+            UpdateZone(data.HeartRate);
+
+            var point = new DateTimePoint(data.Timestamp, data.HeartRate);
+            _heartRateValues.Add(point);
+            if (_heartRateValues.Count > 120)
+                _heartRateValues.RemoveAt(0);
+
+            if (data.RRInterval > 0)
+            {
+                var rrPoint = new DateTimePoint(data.Timestamp, data.RRInterval);
+                _rrValues.Add(rrPoint);
+                if (_rrValues.Count > 60)
+                    _rrValues.RemoveAt(0);
+            }
+        });
+
+        _heartRateService.UpdateHeartRate(e.Data);
+    }
+
+    private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
+    {
+        _dispatcher.Invoke(() => UpdateState(e.State));
+    }
+
+    private void UpdateState(ConnectionState state)
+    {
+        ConnectionStatus = state switch
+        {
+            ConnectionState.Disconnected => "未连接",
+            ConnectionState.Scanning => "扫描中...",
+            ConnectionState.Connecting => "连接中...",
+            ConnectionState.Connected => "已连接",
+            ConnectionState.Reconnecting => "重连中...",
+            _ => "未知"
+        };
+
+        ConnectionStatusIcon = state switch
+        {
+            ConnectionState.Disconnected => "未连接",
+            ConnectionState.Scanning => "扫描中",
+            ConnectionState.Connecting => "连接中",
+            ConnectionState.Connected => "已连接",
+            ConnectionState.Reconnecting => "重连中",
+            _ => "未知"
+        };
+
+        IsConnected = state == ConnectionState.Connected;
+        IsScanning = state == ConnectionState.Scanning;
+        ConnectedDevice = _bleService.ConnectedDevice;
+        DeviceName = ConnectedDevice?.DeviceName ?? "";
+        SignalStrength = ConnectedDevice != null ? $"{ConnectedDevice.SignalStrength} dBm" : "无";
+    }
+
+    private void UpdateZone(int heartRate)
+    {
+        (HeartRateZone, ZoneColor) = heartRate switch
+        {
+            < 100 => ("静息", "#6366F1"),
+            < 140 => ("燃脂", "#22C55E"),
+            < 170 => ("有氧", "#F59E0B"),
+            < 200 => ("极限", "#F97316"),
+            _ => ("最大", "#EF4444")
+        };
+    }
+
+    private async Task LoadDeviceInfoAsync()
     {
         try
         {
-            DiscoveredDevices.Clear();
-            await _bleService.StartScanningAsync();
-
-            _ = Task.Run(async () =>
-            {
-                while (_bleService.IsScanning)
-                {
-                    await Task.Delay(1000);
-                    var devices = new List<BleDevice>();
-                    await foreach (var d in _bleService.DiscoverDevicesAsync())
-                    {
-                        devices.Add(d);
-                    }
-                    _dispatcher.BeginInvoke(() =>
-                    {
-                        foreach (var d in devices)
-                        {
-                            if (!DiscoveredDevices.Any(x => x.DeviceId == d.DeviceId))
-                            {
-                                DiscoveredDevices.Add(d);
-                            }
-                        }
-                    });
-                }
-            });
+            var endTime = DateTime.Now;
+            var startTime = endTime.AddHours(-1);
+            var stats = await _heartRateService.GetStatisticsAsync(startTime, endTime);
+            MinHeartRate = stats.MinHeartRate;
+            MaxHeartRate = stats.MaxHeartRate;
+            AvgHeartRate = stats.AverageHeartRate;
         }
         catch (Exception ex)
         {
-            _logger.Error("启动扫描失败", ex);
+            _logger.Error("加载设备信息失败", ex);
         }
     }
 
-    private async Task StopScanAsync()
+    [RelayCommand]
+    private void NavigateToSettings()
     {
-        await _bleService.StopScanningAsync();
+        var settingsWindow = App.Services?.GetService(typeof(SettingsWindow)) as SettingsWindow;
+        if (settingsWindow != null)
+        {
+            settingsWindow.Owner = Application.Current.MainWindow;
+            settingsWindow.ShowDialog();
+        }
     }
 
-    private async Task ToggleScanAsync()
+    [RelayCommand]
+    private async Task RequestPermissionsAsync()
     {
-        if (_bleService.IsScanning)
-            await StopScanAsync();
-        else
-            await StartScanAsync();
+        var granted = await _bleService.RequestPermissionAsync();
+        if (!granted)
+        {
+            _dispatcher.Invoke(() =>
+            {
+                MessageBox.Show("需要蓝牙权限才能扫描设备", "权限请求",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            });
+        }
     }
 
-    public void Dispose()
+    [RelayCommand]
+    private async Task StopScanningCommandAsync()
+    {
+        await StopScanAsync();
+    }
+
+    public void Cleanup()
     {
         _bleService.HeartRateReceived -= OnHeartRateReceived;
         _bleService.ConnectionStateChanged -= OnConnectionStateChanged;
-        _settingsService.SettingsChanged -= OnSettingsChanged;
+        _bleService.DeviceDiscovered -= OnDeviceDiscovered;
     }
 }
