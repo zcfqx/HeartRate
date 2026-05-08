@@ -291,12 +291,18 @@ public class BleService : IBleService, IDisposable
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
 #pragma warning restore CS1998
     {
+        List<BleDevice> devices;
         lock (_lock)
         {
-            foreach (var device in _discoveredDevices.Values)
-            {
-                yield return device;
-            }
+            devices = _discoveredDevices.Values.ToList();
+        }
+
+        foreach (var device in devices)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                yield break;
+
+            yield return device;
         }
     }
 
@@ -315,9 +321,10 @@ public class BleService : IBleService, IDisposable
 
         if (!hasName || !isConnectable) return;
 
+        var deviceId = args.BluetoothAddress.ToString();
         var device = new BleDevice
         {
-            DeviceId = args.BluetoothAddress.ToString(),
+            DeviceId = deviceId,
             DeviceName = localName,
             SignalStrength = args.RawSignalStrengthInDBm,
             IsConnectable = args.IsConnectable,
@@ -327,21 +334,24 @@ public class BleService : IBleService, IDisposable
         bool isNew = false;
         lock (_lock)
         {
-            if (!_discoveredDevices.ContainsKey(device.DeviceId))
+            if (!_discoveredDevices.ContainsKey(deviceId))
             {
-                _discoveredDevices[device.DeviceId] = device;
+                _discoveredDevices[deviceId] = device;
                 isNew = true;
+                _logger.Debug($"[NEW] 设备首次发现: {localName} (ID: {deviceId})");
             }
             else
             {
-                _discoveredDevices[device.DeviceId].SignalStrength = device.SignalStrength;
+                _discoveredDevices[deviceId].SignalStrength = device.SignalStrength;
+                _logger.Debug($"[UPDATE] 设备已存在: {localName} (ID: {deviceId})");
             }
         }
 
         if (isNew)
         {
-            _logger.Info($"发现心率设备: {device.DeviceName} (信号: {device.SignalStrength} dBm)");
+            _logger.Info($"发现心率设备: {device.DeviceName} (信号: {device.SignalStrength} dBm) - 触发DeviceDiscovered事件");
             DeviceDiscovered?.Invoke(this, device);
+            _logger.Debug($"DeviceDiscovered事件已触发");
         }
     }
 
