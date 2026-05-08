@@ -22,4 +22,5 @@ public interface IBleService
     Task DisconnectAsync();
     Task<bool> AutoReconnectAsync();
     IAsyncEnumerable<BleDevice> DiscoverDevicesAsync(CancellationToken cancellationToken = default);
+    List<BleDevice> GetDiscoveredDevices();
 }

@@ -235,7 +235,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task ConnectAsync(BleDevice? device)
+    public async Task ConnectAsync(BleDevice? device)
     {
         if (device == null) return;
 

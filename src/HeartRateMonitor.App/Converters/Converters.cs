@@ -96,3 +96,24 @@ public class ConnectionStateToColorConverter : IValueConverter
         return (Color)ColorConverter.ConvertFromString(hex);
     }
 }
+
+public class SignalStrengthToOpacityConverter : IValueConverter
+{
+    public static readonly SignalStrengthToOpacityConverter Instance = new();
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int rssi)
+        {
+            // -30 dBm = 1.0 (excellent), -90 dBm = 0.2 (poor)
+            double opacity = Math.Clamp((rssi + 90) / 60.0, 0.2, 1.0);
+            return opacity;
+        }
+        return 0.5;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

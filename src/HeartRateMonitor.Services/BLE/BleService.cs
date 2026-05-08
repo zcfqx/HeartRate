@@ -69,7 +69,11 @@ public class BleService : IBleService, IDisposable
 
     public async Task StartScanningAsync()
     {
-        if (_isScanning) return;
+        // 如果正在扫描，先停止
+        if (_isScanning)
+        {
+            await StopScanningAsync();
+        }
 
         try
         {
@@ -303,6 +307,14 @@ public class BleService : IBleService, IDisposable
                 yield break;
 
             yield return device;
+        }
+    }
+
+    public List<BleDevice> GetDiscoveredDevices()
+    {
+        lock (_lock)
+        {
+            return _discoveredDevices.Values.ToList();
         }
     }
 

@@ -66,9 +66,19 @@ public partial class MainWindow : Window
 
     private void OnScanClick(object sender, RoutedEventArgs e)
     {
-        if (DataContext is MainViewModel vm)
+        var picker = App.Services?.GetService<DevicePickerWindow>();
+        if (picker != null)
         {
-            vm.ToggleScanCommand.Execute(null);
+            picker.Owner = this;
+            var result = picker.ShowDialog();
+            if (result == true && picker.SelectedDevice != null)
+            {
+                // 连接选择的设备
+                if (DataContext is MainViewModel vm)
+                {
+                    _ = vm.ConnectAsync(picker.SelectedDevice);
+                }
+            }
         }
     }
 
