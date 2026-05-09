@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(dotnet build *)",
-      "Bash(powershell -Command \"Get-WinEvent -FilterHashtable @{LogName='Application'; Level=2; StartTime=\\(Get-Date\\).AddMinutes\\(-10\\)} -MaxEvents 5 2>&1 | Format-List TimeCreated,Message\")"
+      "Bash(powershell -Command \"Get-WinEvent -FilterHashtable @{LogName='Application'; Level=2; StartTime=\\(Get-Date\\).AddMinutes\\(-10\\)} -MaxEvents 5 2>&1 | Format-List TimeCreated,Message\")",
+      "Bash(dotnet run *)"
     ]
   }
 }

@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <!-- 基础颜色 -->
     <Color x:Key="PrimaryColor">#6366F1</Color>
     <Color x:Key="PrimaryLightColor">#818CF8</Color>
     <Color x:Key="BackgroundColor">#1A1A2E</Color>
@@ -11,40 +12,59 @@
     <Color x:Key="TextMutedColor">#66FFFFFF</Color>
     <Color x:Key="BorderColor">#33FFFFFF</Color>
 
+    <!-- 语义颜色 -->
+    <Color x:Key="SuccessColor">#22C55E</Color>
+    <Color x:Key="WarningColor">#F59E0B</Color>
+    <Color x:Key="DangerColor">#EF4444</Color>
+    <Color x:Key="OrangeColor">#F97316</Color>
+    <Color x:Key="OverlayBaseColor">#141422</Color>
+    <Color x:Key="DropdownColor">#222238</Color>
+    <Color x:Key="ActivePrimaryColor">#4F46E5</Color>
+    <Color x:Key="E0E0E0Color">#E0E0E0</Color>
+    <Color x:Key="PrimaryOpacityColor">#1A6366F1</Color>
+
+    <!-- 透明度变体颜色 -->
+    <Color x:Key="Opacity99Color">#99FFFFFF</Color>
+    <Color x:Key="Opacity66Color">#66FFFFFF</Color>
+    <Color x:Key="Opacity4DColor">#4DFFFFFF</Color>
+    <Color x:Key="Opacity33Color">#33FFFFFF</Color>
+    <Color x:Key="Opacity22Color">#22FFFFFF</Color>
+    <Color x:Key="Opacity1AColor">#1AFFFFFF</Color>
+    <Color x:Key="Opacity14Color">#14FFFFFF</Color>
+    <Color x:Key="Opacity0DColor">#0DFFFFFF</Color>
+    <Color x:Key="Opacity0AColor">#0AFFFFFF</Color>
+
+    <!-- 基础画刷 -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
     <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
-
-    <Style TargetType="Button" x:Key="PrimaryButton">
-        <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
-        <Setter Property="Foreground" Value="White"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="16,8"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            CornerRadius="8"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}"/>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Opacity" Value="0.8"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
     <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}"/>
+
+    <!-- 语义画刷 -->
+    <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}"/>
+    <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
+    <SolidColorBrush x:Key="OrangeBrush" Color="{StaticResource OrangeColor}"/>
+    <SolidColorBrush x:Key="OverlayBaseBrush" Color="{StaticResource OverlayBaseColor}"/>
+    <SolidColorBrush x:Key="DropdownBrush" Color="{StaticResource DropdownColor}"/>
+    <SolidColorBrush x:Key="ActivePrimaryBrush" Color="{StaticResource ActivePrimaryColor}"/>
+    <SolidColorBrush x:Key="E0E0E0Brush" Color="{StaticResource E0E0E0Color}"/>
+    <SolidColorBrush x:Key="PrimaryOpacityBrush" Color="{StaticResource PrimaryOpacityColor}"/>
+
+    <!-- 透明度变体画刷 -->
+    <SolidColorBrush x:Key="Opacity99Brush" Color="{StaticResource Opacity99Color}"/>
+    <SolidColorBrush x:Key="Opacity66Brush" Color="{StaticResource Opacity66Color}"/>
+    <SolidColorBrush x:Key="Opacity4DBrush" Color="{StaticResource Opacity4DColor}"/>
+    <SolidColorBrush x:Key="Opacity33Brush" Color="{StaticResource Opacity33Color}"/>
+    <SolidColorBrush x:Key="Opacity22Brush" Color="{StaticResource Opacity22Color}"/>
+    <SolidColorBrush x:Key="Opacity1ABrush" Color="{StaticResource Opacity1AColor}"/>
+    <SolidColorBrush x:Key="Opacity14Brush" Color="{StaticResource Opacity14Color}"/>
+    <SolidColorBrush x:Key="Opacity0DBrush" Color="{StaticResource Opacity0DColor}"/>
+    <SolidColorBrush x:Key="Opacity0ABrush" Color="{StaticResource Opacity0AColor}"/>
 
 </ResourceDictionary>

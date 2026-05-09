@@ -22,37 +22,10 @@
         <converters:ConnectionStateToColorConverter x:Key="ConnectionStateToColor"/>
         <converters:OverlayOpacityToBrushConverter x:Key="OpacityToBrush"/>
 
-        <Style x:Key="TitleBarButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#99FFFFFF"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="28"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4"
-                                Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#33FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#22FFFFFF"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="MainBorder" TargetType="Border">
             <Setter Property="Background" Value="{Binding OverlayOpacity, Converter={StaticResource OpacityToBrush}}"/>
             <Setter Property="CornerRadius" Value="16"/>
-            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Margin" Value="4"/>
             <Style.Triggers>
@@ -89,14 +62,14 @@
                          Fill="{Binding ConnectionStatus, Converter={StaticResource ConnectionStateToColor}}"
                          HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0"/>
                 <TextBlock Text="{Binding ConnectionStatus}"
-                           Foreground="#99FFFFFF" FontSize="11"
+                           Foreground="{StaticResource Opacity99Brush}" FontSize="11"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button Style="{StaticResource TitleBarButton}" Click="OnMinimalModeToggle" ToolTip="极简模式">
                         <Path x:Name="MinimalModeIcon"
                               Data="M3,3H21V5H3V3M3,7H15V9H3V7M3,11H21V13H3V11M3,15H15V17H3V15M3,19H21V21H3V19Z"
-                              Fill="#99FFFFFF" Width="14" Height="14"/>
+                              Fill="{StaticResource Opacity99Brush}" Width="14" Height="14"/>
                     </Button>
                     <Button Style="{StaticResource TitleBarButton}" Click="OnScanClick" ToolTip="扫描 / 停止">
                         <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"
@@ -104,14 +77,14 @@
                     </Button>
                     <Button Style="{StaticResource TitleBarButton}" Click="OnSettingsClick" ToolTip="设置">
                         <Path Data="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M20.5,18.5L15,13L15,16A1,1 0 0,1 14,17H10A1,1 0 0,1 9,16V13L3.5,18.5L5,20L10,15V17H14V15L19,20L20.5,18.5Z"
-                              Fill="#99FFFFFF" Width="14" Height="14"/>
+                              Fill="{StaticResource Opacity99Brush}" Width="14" Height="14"/>
                     </Button>
                     <Button Style="{StaticResource TitleBarButton}" Click="OnMinimizeClick" ToolTip="最小化">
-                        <Path Data="M20,14H4V10H20" Fill="#99FFFFFF" Width="14" Height="14"/>
+                        <Path Data="M20,14H4V10H20" Fill="{StaticResource Opacity99Brush}" Width="14" Height="14"/>
                     </Button>
                     <Button Style="{StaticResource TitleBarButton}" Click="OnCloseClick" ToolTip="关闭">
                         <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
-                              Fill="#EF4444" Width="14" Height="14"/>
+                              Fill="{StaticResource DangerBrush}" Width="14" Height="14"/>
                     </Button>
                 </StackPanel>
             </Grid>
@@ -121,7 +94,7 @@
                   MouseLeftButtonDown="OnMinimalAreaMouseDown" Cursor="SizeAll"/>
 
             <TextBlock Grid.Row="1" Text="{Binding DeviceName}"
-                       Foreground="#66FFFFFF" FontSize="10"
+                       Foreground="{StaticResource TextMutedBrush}" FontSize="10"
                        HorizontalAlignment="Center" Margin="0,2,0,0"
                        Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
 
@@ -134,7 +107,7 @@
                                FontFamily="Segoe UI Light"
                                VerticalAlignment="Center"/>
                     <TextBlock Text=" BPM"
-                               Foreground="#66FFFFFF" FontSize="16"
+                               Foreground="{StaticResource TextMutedBrush}" FontSize="16"
                                VerticalAlignment="Bottom" Margin="4,0,0,10"/>
                 </StackPanel>
             </Viewbox>
@@ -158,24 +131,24 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                    <TextBlock Text="最低" Foreground="#4DFFFFFF" FontSize="9" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding MinHeartRate}" Foreground="#99FFFFFF" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="最低" Foreground="{StaticResource Opacity4DBrush}" FontSize="9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding MinHeartRate}" Foreground="{StaticResource Opacity99Brush}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <Line Grid.Column="1" X1="0" Y1="4" X2="0" Y2="36"
-                      Stroke="#1AFFFFFF" StrokeThickness="1" Margin="12,0"/>
+                      Stroke="{StaticResource Opacity1ABrush}" StrokeThickness="1" Margin="12,0"/>
 
                 <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                    <TextBlock Text="平均" Foreground="#4DFFFFFF" FontSize="9" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding AvgHeartRate}" Foreground="#99FFFFFF" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="平均" Foreground="{StaticResource Opacity4DBrush}" FontSize="9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding AvgHeartRate}" Foreground="{StaticResource Opacity99Brush}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <Line Grid.Column="3" X1="0" Y1="4" X2="0" Y2="36"
-                      Stroke="#1AFFFFFF" StrokeThickness="1" Margin="12,0"/>
+                      Stroke="{StaticResource Opacity1ABrush}" StrokeThickness="1" Margin="12,0"/>
 
                 <StackPanel Grid.Column="4" HorizontalAlignment="Center">
-                    <TextBlock Text="最高" Foreground="#4DFFFFFF" FontSize="9" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding MaxHeartRate}" Foreground="#99FFFFFF" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="最高" Foreground="{StaticResource Opacity4DBrush}" FontSize="9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding MaxHeartRate}" Foreground="{StaticResource Opacity99Brush}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Grid>
 
@@ -188,20 +161,20 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                    <TextBlock Text="RR间期" Foreground="#4DFFFFFF" FontSize="9" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding RrInterval}" Foreground="#99FFFFFF" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="RR间期" Foreground="{StaticResource Opacity4DBrush}" FontSize="9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding RrInterval}" Foreground="{StaticResource Opacity99Brush}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <Line Grid.Column="1" X1="0" Y1="4" X2="0" Y2="30"
-                      Stroke="#1AFFFFFF" StrokeThickness="1" Margin="16,0"/>
+                      Stroke="{StaticResource Opacity1ABrush}" StrokeThickness="1" Margin="16,0"/>
 
                 <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                    <TextBlock Text="信号强度" Foreground="#4DFFFFFF" FontSize="9" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding SignalStrength}" Foreground="#99FFFFFF" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="信号强度" Foreground="{StaticResource Opacity4DBrush}" FontSize="9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding SignalStrength}" Foreground="{StaticResource Opacity99Brush}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Grid>
 
-            <Border Grid.Row="6" Background="#1AFFFFFF" CornerRadius="8" Margin="12,12,12,0" Padding="0"
+            <Border Grid.Row="6" Background="{StaticResource Opacity1ABrush}" CornerRadius="8" Margin="12,12,12,0" Padding="0"
                     Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <lvc:CartesianChart Series="{Binding HeartRateSeries}"
                                     XAxes="{Binding XAxes}"
@@ -211,14 +184,14 @@
             </Border>
 
             <TextBlock Grid.Row="7" Text="{Binding LastUpdate, StringFormat='最后更新: {0}'}"
-                       Foreground="#4DFFFFFF" FontSize="10" HorizontalAlignment="Center"
+                       Foreground="{StaticResource Opacity4DBrush}" FontSize="10" HorizontalAlignment="Center"
                        Margin="12,6,12,0"
                        Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
 
             <Grid Grid.Row="8" Margin="12,4,12,10"
                   Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
                 <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"
-                      Fill="#EF4444" Width="14" Height="14"
+                      Fill="{StaticResource DangerBrush}" Width="14" Height="14"
                       HorizontalAlignment="Center"/>
                 <ResizeGrip HorizontalAlignment="Right" VerticalAlignment="Bottom"
                             Width="16" Height="16" Cursor="SizeNWSE"
@@ -230,7 +203,7 @@
                                     <ControlTemplate TargetType="ResizeGrip">
                                         <Grid>
                                             <Path Data="M1,12 L12,1 M5,12 L12,5 M9,12 L12,9"
-                                                  Stroke="#99FFFFFF" StrokeThickness="1" Stretch="Uniform" Margin="2"/>
+                                                  Stroke="{StaticResource Opacity99Brush}" StrokeThickness="1" Stretch="Uniform" Margin="2"/>
                                         </Grid>
                                     </ControlTemplate>
                                 </Setter.Value>

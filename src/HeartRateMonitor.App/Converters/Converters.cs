@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
@@ -6,30 +7,42 @@ namespace HeartRateMonitor.App.Converters;
 
 public class HeartRateToColorConverter : IValueConverter
 {
+    private static Brush? _textPrimaryBrush;
+    private static Brush? _successBrush;
+    private static Brush? _warningBrush;
+    private static Brush? _orangeBrush;
+    private static Brush? _dangerBrush;
+
+    private static Brush GetBrush(string key) =>
+        key switch
+        {
+            "TextPrimaryBrush" => _textPrimaryBrush ??= (Brush)Application.Current.Resources["TextPrimaryBrush"],
+            "SuccessBrush" => _successBrush ??= (Brush)Application.Current.Resources["SuccessBrush"],
+            "WarningBrush" => _warningBrush ??= (Brush)Application.Current.Resources["WarningBrush"],
+            "OrangeBrush" => _orangeBrush ??= (Brush)Application.Current.Resources["OrangeBrush"],
+            "DangerBrush" => _dangerBrush ??= (Brush)Application.Current.Resources["DangerBrush"],
+            _ => Brushes.White
+        };
+
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is int heartRate)
         {
             return heartRate switch
             {
-                < 100 => new SolidColorBrush(ColorFromHex("#FFFFFF")),
-                < 140 => new SolidColorBrush(ColorFromHex("#22C55E")),
-                < 170 => new SolidColorBrush(ColorFromHex("#F59E0B")),
-                < 200 => new SolidColorBrush(ColorFromHex("#F97316")),
-                _ => new SolidColorBrush(ColorFromHex("#EF4444"))
+                < 100 => GetBrush("TextPrimaryBrush"),
+                < 140 => GetBrush("SuccessBrush"),
+                < 170 => GetBrush("WarningBrush"),
+                < 200 => GetBrush("OrangeBrush"),
+                _ => GetBrush("DangerBrush")
             };
         }
-        return new SolidColorBrush(Colors.White);
+        return Brushes.White;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
         throw new NotImplementedException();
-    }
-
-    private static Color ColorFromHex(string hex)
-    {
-        return (Color)ColorConverter.ConvertFromString(hex);
     }
 }
 
@@ -40,7 +53,7 @@ public class BoolToVisibilityConverter : IValueConverter
         bool boolValue = value is true;
         if (parameter?.ToString() == "Invert")
             boolValue = !boolValue;
-        return boolValue ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+        return boolValue ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -51,7 +64,9 @@ public class BoolToVisibilityConverter : IValueConverter
 
 public class OverlayOpacityToBrushConverter : IValueConverter
 {
-    private static readonly Color BaseColor = (Color)ColorConverter.ConvertFromString("#141422");
+    private static Color? _baseColor;
+
+    private static Color BaseColor => _baseColor ??= (Color)Application.Current.Resources["OverlayBaseColor"];
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
@@ -72,28 +87,36 @@ public class OverlayOpacityToBrushConverter : IValueConverter
 
 public class ConnectionStateToColorConverter : IValueConverter
 {
+    private static Brush? _successBrush;
+    private static Brush? _warningBrush;
+    private static Brush? _dangerBrush;
+
+    private static Brush GetBrush(string key) =>
+        key switch
+        {
+            "SuccessBrush" => _successBrush ??= (Brush)Application.Current.Resources["SuccessBrush"],
+            "WarningBrush" => _warningBrush ??= (Brush)Application.Current.Resources["WarningBrush"],
+            "DangerBrush" => _dangerBrush ??= (Brush)Application.Current.Resources["DangerBrush"],
+            _ => Brushes.Red
+        };
+
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is string state)
         {
             return state switch
             {
-                "已连接" => new SolidColorBrush(ColorFromHex("#22C55E")),
-                "扫描中..." or "连接中..." or "重连中..." or "扫描中" or "连接中" or "重连中" => new SolidColorBrush(ColorFromHex("#F59E0B")),
-                _ => new SolidColorBrush(ColorFromHex("#EF4444"))
+                "已连接" => GetBrush("SuccessBrush"),
+                "扫描中..." or "连接中..." or "重连中..." or "扫描中" or "连接中" or "重连中" => GetBrush("WarningBrush"),
+                _ => GetBrush("DangerBrush")
             };
         }
-        return new SolidColorBrush(ColorFromHex("#EF4444"));
+        return GetBrush("DangerBrush");
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
         throw new NotImplementedException();
-    }
-
-    private static Color ColorFromHex(string hex)
-    {
-        return (Color)ColorConverter.ConvertFromString(hex);
     }
 }
 

@@ -66,29 +66,17 @@ public partial class MainWindow : Window
 
     private void OnScanClick(object sender, RoutedEventArgs e)
     {
-        var picker = App.Services?.GetService<DevicePickerWindow>();
-        if (picker != null)
+        if (DataContext is MainViewModel vm)
         {
-            picker.Owner = this;
-            var result = picker.ShowDialog();
-            if (result == true && picker.SelectedDevice != null)
-            {
-                // 连接选择的设备
-                if (DataContext is MainViewModel vm)
-                {
-                    _ = vm.ConnectAsync(picker.SelectedDevice);
-                }
-            }
+            vm.ShowDevicePickerCommand.Execute(null);
         }
     }
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)
     {
-        var settingsWindow = App.Services?.GetService<SettingsWindow>();
-        if (settingsWindow != null)
+        if (DataContext is MainViewModel vm)
         {
-            settingsWindow.Owner = this;
-            settingsWindow.ShowDialog();
+            vm.NavigateToSettingsCommand.Execute(null);
         }
     }
 

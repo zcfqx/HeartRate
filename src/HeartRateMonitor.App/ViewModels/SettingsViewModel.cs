@@ -33,6 +33,24 @@ public partial class SettingsViewModel : ObservableObject
         _settingsService.NotifySettingsChanged();
     }
 
+    partial void OnHighHeartRateThresholdChanged(int value)
+    {
+        if (value < 30) HighHeartRateThreshold = 30;
+        else if (value > 250) HighHeartRateThreshold = 250;
+    }
+
+    partial void OnLowHeartRateThresholdChanged(int value)
+    {
+        if (value < 30) LowHeartRateThreshold = 30;
+        else if (value > 250) LowHeartRateThreshold = 250;
+    }
+
+    partial void OnDataRetentionDaysChanged(int value)
+    {
+        if (value < 1) DataRetentionDays = 1;
+        else if (value > 365) DataRetentionDays = 365;
+    }
+
     [ObservableProperty]
     private string _theme = "深色";
 
@@ -79,6 +97,11 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
+            if (HighHeartRateThreshold <= LowHeartRateThreshold)
+            {
+                _logger.Warning("心率上限阈值应大于下限阈值");
+            }
+
             _settingsService.AutoConnect = AutoConnect;
             _settingsService.HighHeartRateThreshold = HighHeartRateThreshold;
             _settingsService.LowHeartRateThreshold = LowHeartRateThreshold;

@@ -46,6 +46,14 @@ public partial class DevicePickerWindow : Window
         Close();
     }
 
+    private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
+    }
+
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {
         DialogResult = false;

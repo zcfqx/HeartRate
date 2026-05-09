@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,20 +11,31 @@ using HeartRateMonitor.Core.Enums;
 using HeartRateMonitor.Core.Events;
 using HeartRateMonitor.Core.Interfaces;
 using HeartRateMonitor.Core.Models;
-using HeartRateMonitor.App.Views;
 
 namespace HeartRateMonitor.App.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    private const string ZoneColorRest = "#6366F1";
+    private const string ZoneColorFatBurn = "#22C55E";
+    private const string ZoneColorCardio = "#F59E0B";
+    private const string ZoneColorPeak = "#F97316";
+    private const string ZoneColorMax = "#EF4444";
+
     private readonly IHeartRateService _heartRateService;
     private readonly IBleService _bleService;
     private readonly ISettingsService _settingsService;
+    private readonly IDialogService _dialogService;
     private readonly ILogger _logger;
 
     private readonly Dispatcher _dispatcher;
     private readonly ObservableCollection<DateTimePoint> _heartRateValues = new();
     private readonly ObservableCollection<DateTimePoint> _rrValues = new();
+
+    private int _runningMin = int.MaxValue;
+    private int _runningMax = int.MinValue;
+    private double _runningSum;
+    private int _runningCount;
 
     [ObservableProperty]
     private int _currentHeartRate;
@@ -58,7 +68,7 @@ public partial class MainViewModel : ObservableObject
     private string _heartRateZone = "静息";
 
     [ObservableProperty]
-    private string _zoneColor = "#6366F1";
+    private string _zoneColor = ZoneColorRest;
 
     [ObservableProperty]
     private bool _isSensorContact;
@@ -120,11 +130,13 @@ public partial class MainViewModel : ObservableObject
         IHeartRateService heartRateService,
         IBleService bleService,
         ISettingsService settingsService,
+        IDialogService dialogService,
         ILogger logger)
     {
         _heartRateService = heartRateService;
         _bleService = bleService;
         _settingsService = settingsService;
+        _dialogService = dialogService;
         _logger = logger;
 
         _dispatcher = Dispatcher.CurrentDispatcher;
@@ -184,11 +196,10 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ShowDevicePicker()
     {
-        var picker = App.Services?.GetService(typeof(DevicePickerWindow)) as DevicePickerWindow;
-        if (picker != null)
+        var device = _dialogService.ShowDevicePickerDialog();
+        if (device != null)
         {
-            picker.Owner = Application.Current.MainWindow;
-            picker.ShowDialog();
+            _ = ConnectAsync(device);
         }
     }
 
@@ -252,11 +263,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.Error("连接设备失败", ex);
-            _dispatcher.Invoke(() =>
-            {
-                MessageBox.Show($"连接设备失败: {ex.Message}", "连接错误",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-            });
+            _dialogService.ShowMessage($"连接设备失败: {ex.Message}", "连接错误");
         }
     }
 
@@ -275,9 +282,15 @@ public partial class MainViewModel : ObservableObject
 
     private void OnHeartRateReceived(object? sender, HeartRateChangedEventArgs e)
     {
+        var data = e.Data;
+
+        _runningMin = Math.Min(_runningMin, data.HeartRate);
+        _runningMax = Math.Max(_runningMax, data.HeartRate);
+        _runningSum += data.HeartRate;
+        _runningCount++;
+
         _dispatcher.Invoke(() =>
         {
-            var data = e.Data;
             CurrentHeartRate = data.HeartRate;
             BpmText = data.HeartRate.ToString();
             RrInterval = data.RRInterval > 0 ? $"{data.RRInterval:F1} ms" : "0 ms";
@@ -285,6 +298,10 @@ public partial class MainViewModel : ObservableObject
             LastUpdate = data.Timestamp.ToString("HH:mm:ss");
 
             UpdateZone(data.HeartRate);
+
+            MinHeartRate = _runningMin;
+            MaxHeartRate = _runningMax;
+            AvgHeartRate = _runningCount > 0 ? Math.Round(_runningSum / _runningCount, 1) : 0;
 
             var point = new DateTimePoint(data.Timestamp, data.HeartRate);
             _heartRateValues.Add(point);
@@ -306,6 +323,20 @@ public partial class MainViewModel : ObservableObject
     private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
     {
         _dispatcher.Invoke(() => UpdateState(e.State));
+
+        if (e.State == ConnectionState.Connected)
+        {
+            ResetRunningStatistics();
+            _ = LoadDeviceInfoAsync();
+        }
+    }
+
+    private void ResetRunningStatistics()
+    {
+        _runningMin = int.MaxValue;
+        _runningMax = int.MinValue;
+        _runningSum = 0;
+        _runningCount = 0;
     }
 
     private void UpdateState(ConnectionState state)
@@ -341,11 +372,11 @@ public partial class MainViewModel : ObservableObject
     {
         (HeartRateZone, ZoneColor) = heartRate switch
         {
-            < 100 => ("静息", "#6366F1"),
-            < 140 => ("燃脂", "#22C55E"),
-            < 170 => ("有氧", "#F59E0B"),
-            < 200 => ("极限", "#F97316"),
-            _ => ("最大", "#EF4444")
+            < 100 => ("静息", ZoneColorRest),
+            < 140 => ("燃脂", ZoneColorFatBurn),
+            < 170 => ("有氧", ZoneColorCardio),
+            < 200 => ("极限", ZoneColorPeak),
+            _ => ("最大", ZoneColorMax)
         };
     }
 
@@ -356,9 +387,18 @@ public partial class MainViewModel : ObservableObject
             var endTime = DateTime.Now;
             var startTime = endTime.AddHours(-1);
             var stats = await _heartRateService.GetStatisticsAsync(startTime, endTime);
-            MinHeartRate = stats.MinHeartRate;
-            MaxHeartRate = stats.MaxHeartRate;
-            AvgHeartRate = stats.AverageHeartRate;
+
+            _dispatcher.Invoke(() =>
+            {
+                MinHeartRate = stats.MinHeartRate;
+                MaxHeartRate = stats.MaxHeartRate;
+                AvgHeartRate = stats.AverageHeartRate;
+            });
+
+            _runningMin = stats.MinHeartRate == 0 ? int.MaxValue : stats.MinHeartRate;
+            _runningMax = stats.MaxHeartRate == 0 ? int.MinValue : stats.MaxHeartRate;
+            _runningSum = 0;
+            _runningCount = 0;
         }
         catch (Exception ex)
         {
@@ -369,12 +409,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void NavigateToSettings()
     {
-        var settingsWindow = App.Services?.GetService(typeof(SettingsWindow)) as SettingsWindow;
-        if (settingsWindow != null)
-        {
-            settingsWindow.Owner = Application.Current.MainWindow;
-            settingsWindow.ShowDialog();
-        }
+        _dialogService.ShowSettingsDialog();
     }
 
     [RelayCommand]
@@ -383,11 +418,7 @@ public partial class MainViewModel : ObservableObject
         var granted = await _bleService.RequestPermissionAsync();
         if (!granted)
         {
-            _dispatcher.Invoke(() =>
-            {
-                MessageBox.Show("需要蓝牙权限才能扫描设备", "权限请求",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            });
+            _dialogService.ShowMessage("需要蓝牙权限才能扫描设备", "权限请求");
         }
     }
 

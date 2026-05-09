@@ -121,6 +121,7 @@ public partial class App : Application
         services.AddSingleton<IHeartRateService, HeartRateService>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDataService, DataService>();
+        services.AddSingleton<IDialogService, DialogService>();
 
         services.AddTransient<MainViewModel>();
         services.AddTransient<SettingsViewModel>();
