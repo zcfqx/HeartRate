@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:HeartRateMonitor.App.Converters"
         mc:Ignorable="d"
         Title="设置" Width="380" Height="520"
         WindowStartupLocation="CenterOwner"
@@ -11,7 +12,11 @@
         Background="Transparent"
         ResizeMode="NoResize">
 
-    <Border Background="{StaticResource BackgroundBrush}"
+    <Window.Resources>
+        <converters:OverlayOpacityToBrushConverter x:Key="OpacityToBrush"/>
+    </Window.Resources>
+
+    <Border Background="{Binding OverlayOpacity, Converter={StaticResource OpacityToBrush}}"
             CornerRadius="16"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"

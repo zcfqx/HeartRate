@@ -52,12 +52,6 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    private string _theme = "深色";
-
-    [ObservableProperty]
-    private string _language = "简体中文";
-
-    [ObservableProperty]
     private bool _startWithWindows;
 
     [ObservableProperty]
@@ -84,8 +78,6 @@ public partial class SettingsViewModel : ObservableObject
         EnableNotifications = _settingsService.EnableNotifications;
         EnableSoundAlert = _settingsService.EnableSoundAlert;
         OverlayOpacity = _settingsService.OverlayOpacity;
-        Theme = _settingsService.Theme == "Dark" ? "深色" : "浅色";
-        Language = _settingsService.Language == "en" ? "English" : "简体中文";
         StartWithWindows = _settingsService.StartWithWindows;
         MinimizeToTray = _settingsService.MinimizeToTray;
         DataRetentionDays = _settingsService.DataRetentionDays;
@@ -108,14 +100,13 @@ public partial class SettingsViewModel : ObservableObject
             _settingsService.EnableNotifications = EnableNotifications;
             _settingsService.EnableSoundAlert = EnableSoundAlert;
             _settingsService.OverlayOpacity = OverlayOpacity;
-            _settingsService.Theme = Theme == "深色" ? "Dark" : "Light";
-            _settingsService.Language = Language == "English" ? "en" : "zh-CN";
             _settingsService.StartWithWindows = StartWithWindows;
             _settingsService.MinimizeToTray = MinimizeToTray;
             _settingsService.DataRetentionDays = DataRetentionDays;
             _settingsService.MinimalMode = MinimalMode;
 
             await _settingsService.SaveAsync();
+            _settingsService.NotifySettingsChanged();
             _logger.Info("设置已保存");
         }
         catch (Exception ex)

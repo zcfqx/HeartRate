@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Start-Process -FilePath \"c:\\\\Users\\\\zhengchangfu\\\\Desktop\\\\document\\\\HeartRate\\\\src\\\\HeartRateMonitor.App\\\\bin\\\\Debug\\\\net8.0-windows10.0.22621.0\\\\HeartRateMonitor.App.exe\")"
+    ]
+  }
+}

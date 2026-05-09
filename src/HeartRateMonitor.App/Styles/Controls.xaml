@@ -133,20 +133,29 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border x:Name="Track" Width="40" Height="22" CornerRadius="11"
-                                Background="{StaticResource Opacity33Brush}" BorderBrush="{StaticResource Opacity1ABrush}" BorderThickness="1">
-                            <Border x:Name="Thumb" Width="18" Height="18" CornerRadius="9"
-                                    Background="{StaticResource Opacity99Brush}" HorizontalAlignment="Left" Margin="1"/>
-                        </Border>
-                        <ContentPresenter VerticalAlignment="Center" Margin="8,0,0,0"/>
-                    </StackPanel>
+                    <Border Background="Transparent" Padding="4,6" VerticalAlignment="Center">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="Track" Grid.Column="0" Width="40" Height="22" CornerRadius="11"
+                                    Background="{StaticResource Opacity33Brush}" BorderBrush="{StaticResource Opacity1ABrush}" BorderThickness="1">
+                                <Border x:Name="Thumb" Width="18" Height="18" CornerRadius="9"
+                                        Background="{StaticResource Opacity99Brush}" HorizontalAlignment="Left" Margin="1"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </Grid>
+                    </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Track" Property="Background" Value="{StaticResource PrimaryBrush}"/>
                             <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource PrimaryLightBrush}"/>
                             <Setter TargetName="Thumb" Property="Background" Value="White"/>
                             <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Opacity4DBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -302,37 +311,35 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
-                    <Grid>
-                        <Track x:Name="PART_Track" IsDirectionReversed="True">
-                            <Track.Thumb>
-                                <Thumb>
-                                    <Thumb.Template>
-                                        <ControlTemplate TargetType="Thumb">
-                                            <Border Background="{StaticResource Opacity33Brush}" CornerRadius="3"/>
-                                        </ControlTemplate>
-                                    </Thumb.Template>
-                                </Thumb>
-                            </Track.Thumb>
-                            <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}">
-                                    <RepeatButton.Template>
-                                        <ControlTemplate TargetType="RepeatButton">
-                                            <Border Background="Transparent"/>
-                                        </ControlTemplate>
-                                    </RepeatButton.Template>
-                                </RepeatButton>
-                            </Track.DecreaseRepeatButton>
-                            <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}">
-                                    <RepeatButton.Template>
-                                        <ControlTemplate TargetType="RepeatButton">
-                                            <Border Background="Transparent"/>
-                                        </ControlTemplate>
-                                    </RepeatButton.Template>
-                                </RepeatButton>
-                            </Track.IncreaseRepeatButton>
-                        </Track>
-                    </Grid>
+                    <Track x:Name="PART_Track" IsDirectionReversed="True">
+                        <Track.Thumb>
+                            <Thumb MinHeight="20">
+                                <Thumb.Template>
+                                    <ControlTemplate TargetType="Thumb">
+                                        <Border Background="{StaticResource Opacity33Brush}" CornerRadius="3"/>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Track.Thumb>
+                        <Track.DecreaseRepeatButton>
+                            <RepeatButton Command="{x:Static ScrollBar.LineUpCommand}">
+                                <RepeatButton.Template>
+                                    <ControlTemplate TargetType="RepeatButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </RepeatButton.Template>
+                            </RepeatButton>
+                        </Track.DecreaseRepeatButton>
+                        <Track.IncreaseRepeatButton>
+                            <RepeatButton Command="{x:Static ScrollBar.LineDownCommand}">
+                                <RepeatButton.Template>
+                                    <ControlTemplate TargetType="RepeatButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </RepeatButton.Template>
+                            </RepeatButton>
+                        </Track.IncreaseRepeatButton>
+                    </Track>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -345,13 +352,15 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <ScrollContentPresenter Grid.Column="0" CanContentScroll="True"
+            <ScrollContentPresenter Grid.Column="0"
+                                    CanContentScroll="{TemplateBinding CanContentScroll}"
                                     Content="{TemplateBinding Content}"
                                     ContentTemplate="{TemplateBinding ContentTemplate}"/>
             <ScrollBar x:Name="PART_VerticalScrollBar"
                        Grid.Column="1"
-                       Value="{TemplateBinding VerticalOffset}"
+                       Minimum="0"
                        Maximum="{TemplateBinding ScrollableHeight}"
+                       Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                        ViewportSize="{TemplateBinding ViewportHeight}"
                        Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
                        Style="{StaticResource ThemedScrollBar}"/>
@@ -367,13 +376,14 @@
 
     <!-- 滑块 (SliderStyle) -->
     <Style x:Key="SliderStyle" TargetType="Slider">
+        <Setter Property="Height" Value="32"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Slider">
-                    <Grid>
-                        <Track x:Name="PART_Track" Height="6">
+                    <Border Background="Transparent" Padding="0,8">
+                        <Track x:Name="PART_Track" VerticalAlignment="Center">
                             <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="{x:Static Slider.DecreaseLarge}">
+                                <RepeatButton Command="{x:Static Slider.DecreaseSmall}">
                                     <RepeatButton.Template>
                                         <ControlTemplate TargetType="RepeatButton">
                                             <Border Background="{StaticResource PrimaryBrush}" CornerRadius="3"/>
@@ -382,7 +392,7 @@
                                 </RepeatButton>
                             </Track.DecreaseRepeatButton>
                             <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="{x:Static Slider.IncreaseLarge}">
+                                <RepeatButton Command="{x:Static Slider.IncreaseSmall}">
                                     <RepeatButton.Template>
                                         <ControlTemplate TargetType="RepeatButton">
                                             <Border Background="{StaticResource BorderBrush}" CornerRadius="3"/>
@@ -391,7 +401,7 @@
                                 </RepeatButton>
                             </Track.IncreaseRepeatButton>
                             <Track.Thumb>
-                                <Thumb Width="16" Height="16">
+                                <Thumb Width="18" Height="18">
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
                                             <Ellipse Fill="White" Stroke="{StaticResource PrimaryBrush}" StrokeThickness="2"/>
@@ -400,7 +410,7 @@
                                 </Thumb>
                             </Track.Thumb>
                         </Track>
-                    </Grid>
+                    </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

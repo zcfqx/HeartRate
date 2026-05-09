@@ -25,7 +25,6 @@ public partial class MainViewModel : ObservableObject
     private readonly IHeartRateService _heartRateService;
     private readonly IBleService _bleService;
     private readonly ISettingsService _settingsService;
-    private readonly IDialogService _dialogService;
     private readonly ILogger _logger;
 
     private readonly Dispatcher _dispatcher;
@@ -36,6 +35,8 @@ public partial class MainViewModel : ObservableObject
     private int _runningMax = int.MinValue;
     private double _runningSum;
     private int _runningCount;
+
+    // ==================== 心率数据 ====================
 
     [ObservableProperty]
     private int _currentHeartRate;
@@ -83,6 +84,9 @@ public partial class MainViewModel : ObservableObject
     private bool _isScanning;
 
     [ObservableProperty]
+    private string _scanStatusText = "未扫描";
+
+    [ObservableProperty]
     private bool _isMinimalMode;
 
     [ObservableProperty]
@@ -100,6 +104,48 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<BleDevice> _discoveredDevices = new();
 
+    // ==================== 面板状态 ====================
+
+    [ObservableProperty]
+    private string _activePanel = "None"; // None, Device, Settings
+
+    [ObservableProperty]
+    private bool _isDevicePanelOpen;
+
+    [ObservableProperty]
+    private bool _isSettingsPanelOpen;
+
+    [ObservableProperty]
+    private bool _isHeartRatePanelOpen = true;
+
+    // ==================== 设置属性 ====================
+
+    [ObservableProperty]
+    private bool _autoConnect = true;
+
+    [ObservableProperty]
+    private int _highHeartRateThreshold = 160;
+
+    [ObservableProperty]
+    private int _lowHeartRateThreshold = 50;
+
+    [ObservableProperty]
+    private bool _enableNotifications = true;
+
+    [ObservableProperty]
+    private bool _enableSoundAlert;
+
+    [ObservableProperty]
+    private bool _startWithWindows;
+
+    [ObservableProperty]
+    private bool _minimizeToTray = true;
+
+    [ObservableProperty]
+    private int _dataRetentionDays = 30;
+
+    // ==================== 图表 ====================
+
     public ISeries[] HeartRateSeries { get; }
     public ISeries[] RrSeries { get; }
 
@@ -107,11 +153,7 @@ public partial class MainViewModel : ObservableObject
     {
         new Axis
         {
-            Labeler = value => new DateTime((long)value).ToString("HH:mm:ss"),
-            UnitWidth = TimeSpan.FromSeconds(1).Ticks,
-            LabelsPaint = new SolidColorPaint(SKColors.WhiteSmoke),
-            SeparatorsPaint = new SolidColorPaint(SKColors.WhiteSmoke),
-            AnimationsSpeed = TimeSpan.FromMilliseconds(0)
+            IsVisible = false
         }
     };
 
@@ -119,10 +161,9 @@ public partial class MainViewModel : ObservableObject
     {
         new Axis
         {
+            IsVisible = false,
             MinLimit = 40,
-            MaxLimit = 220,
-            LabelsPaint = new SolidColorPaint(SKColors.WhiteSmoke),
-            SeparatorsPaint = new SolidColorPaint(SKColors.WhiteSmoke)
+            MaxLimit = 120
         }
     };
 
@@ -130,13 +171,11 @@ public partial class MainViewModel : ObservableObject
         IHeartRateService heartRateService,
         IBleService bleService,
         ISettingsService settingsService,
-        IDialogService dialogService,
         ILogger logger)
     {
         _heartRateService = heartRateService;
         _bleService = bleService;
         _settingsService = settingsService;
-        _dialogService = dialogService;
         _logger = logger;
 
         _dispatcher = Dispatcher.CurrentDispatcher;
@@ -170,11 +209,16 @@ public partial class MainViewModel : ObservableObject
         _bleService.HeartRateReceived += OnHeartRateReceived;
         _bleService.ConnectionStateChanged += OnConnectionStateChanged;
         _bleService.DeviceDiscovered += OnDeviceDiscovered;
+        _settingsService.SettingsChanged += OnSettingsChanged;
 
         OverlayOpacity = _settingsService.OverlayOpacity;
+        IsMinimalMode = _settingsService.MinimalMode;
+        LoadSettingsFromService();
 
         _ = LoadDeviceInfoAsync();
     }
+
+    // ==================== 设备发现 ====================
 
     private void OnDeviceDiscovered(object? sender, BleDevice device)
     {
@@ -187,21 +231,68 @@ public partial class MainViewModel : ObservableObject
         });
     }
 
+    // ==================== 面板切换 ====================
+
+    [RelayCommand]
+    private void ToggleDevicePanel()
+    {
+        if (ActivePanel == "Device")
+        {
+            ActivePanel = "None";
+            IsDevicePanelOpen = false;
+            IsHeartRatePanelOpen = true;
+        }
+        else
+        {
+            ActivePanel = "Device";
+            IsDevicePanelOpen = true;
+            IsSettingsPanelOpen = false;
+            IsHeartRatePanelOpen = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleSettingsPanel()
+    {
+        if (ActivePanel == "Settings")
+        {
+            ActivePanel = "None";
+            IsSettingsPanelOpen = false;
+            IsHeartRatePanelOpen = true;
+        }
+        else
+        {
+            ActivePanel = "Settings";
+            IsSettingsPanelOpen = true;
+            IsDevicePanelOpen = false;
+            IsHeartRatePanelOpen = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ShowHeartRatePanel()
+    {
+        ActivePanel = "None";
+        IsDevicePanelOpen = false;
+        IsSettingsPanelOpen = false;
+        IsHeartRatePanelOpen = true;
+    }
+
+    // ==================== 极简模式 ====================
+
     [RelayCommand]
     private void ToggleMinimalMode()
     {
         IsMinimalMode = !IsMinimalMode;
     }
 
-    [RelayCommand]
-    private void ShowDevicePicker()
+    partial void OnIsMinimalModeChanged(bool value)
     {
-        var device = _dialogService.ShowDevicePickerDialog();
-        if (device != null)
-        {
-            _ = ConnectAsync(device);
-        }
+        _settingsService.MinimalMode = value;
+        _ = _settingsService.SaveAsync();
     }
+
+    // ==================== 扫描 ====================
 
     [RelayCommand]
     private async Task ToggleScanAsync()
@@ -221,13 +312,16 @@ public partial class MainViewModel : ObservableObject
         try
         {
             DiscoveredDevices.Clear();
+            ScanStatusText = "扫描中...";
             await _bleService.StartScanningAsync();
             IsScanning = true;
+            ScanStatusText = "扫描中...";
         }
         catch (Exception ex)
         {
             _logger.Error("启动扫描失败", ex);
             IsScanning = false;
+            ScanStatusText = $"扫描失败: {ex.Message}";
             UpdateState(ConnectionState.Disconnected);
         }
     }
@@ -238,12 +332,16 @@ public partial class MainViewModel : ObservableObject
         {
             await _bleService.StopScanningAsync();
             IsScanning = false;
+            ScanStatusText = "已停止";
         }
         catch (Exception ex)
         {
             _logger.Error("停止扫描失败", ex);
+            ScanStatusText = $"停止失败: {ex.Message}";
         }
     }
+
+    // ==================== 连接 ====================
 
     [RelayCommand]
     public async Task ConnectAsync(BleDevice? device)
@@ -259,11 +357,17 @@ public partial class MainViewModel : ObservableObject
 
             _settingsService.LastDeviceId = device.DeviceId;
             await _settingsService.SaveAsync();
+
+            // 连接成功后关闭设备面板
+            _dispatcher.Invoke(() =>
+            {
+                ActivePanel = "None";
+                IsDevicePanelOpen = false;
+            });
         }
         catch (Exception ex)
         {
             _logger.Error("连接设备失败", ex);
-            _dialogService.ShowMessage($"连接设备失败: {ex.Message}", "连接错误");
         }
     }
 
@@ -279,6 +383,8 @@ public partial class MainViewModel : ObservableObject
             _logger.Error("断开连接失败", ex);
         }
     }
+
+    // ==================== 心率数据处理 ====================
 
     private void OnHeartRateReceived(object? sender, HeartRateChangedEventArgs e)
     {
@@ -302,6 +408,8 @@ public partial class MainViewModel : ObservableObject
             MinHeartRate = _runningMin;
             MaxHeartRate = _runningMax;
             AvgHeartRate = _runningCount > 0 ? Math.Round(_runningSum / _runningCount, 1) : 0;
+
+            UpdateChartAxis(data.HeartRate);
 
             var point = new DateTimePoint(data.Timestamp, data.HeartRate);
             _heartRateValues.Add(point);
@@ -368,6 +476,17 @@ public partial class MainViewModel : ObservableObject
         SignalStrength = ConnectedDevice != null ? $"{ConnectedDevice.SignalStrength} dBm" : "无";
     }
 
+    private void UpdateChartAxis(int heartRate)
+    {
+        var axis = YAxes[0];
+        var min = (int)Math.Floor(Math.Min(_runningMin, heartRate) / 10.0) * 10 - 10;
+        var max = (int)Math.Ceiling(Math.Max(_runningMax, heartRate) / 10.0) * 10 + 10;
+        min = Math.Max(min, 0);
+        max = Math.Max(max, min + 20);
+        axis.MinLimit = min;
+        axis.MaxLimit = max;
+    }
+
     private void UpdateZone(int heartRate)
     {
         (HeartRateZone, ZoneColor) = heartRate switch
@@ -406,11 +525,83 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private void NavigateToSettings()
+    // ==================== 设置 ====================
+
+    private void LoadSettingsFromService()
     {
-        _dialogService.ShowSettingsDialog();
+        AutoConnect = _settingsService.AutoConnect;
+        HighHeartRateThreshold = _settingsService.HighHeartRateThreshold;
+        LowHeartRateThreshold = _settingsService.LowHeartRateThreshold;
+        EnableNotifications = _settingsService.EnableNotifications;
+        EnableSoundAlert = _settingsService.EnableSoundAlert;
+        StartWithWindows = _settingsService.StartWithWindows;
+        MinimizeToTray = _settingsService.MinimizeToTray;
+        DataRetentionDays = _settingsService.DataRetentionDays;
     }
+
+    partial void OnOverlayOpacityChanged(double value)
+    {
+        _settingsService.OverlayOpacity = value;
+        _settingsService.NotifySettingsChanged();
+    }
+
+    partial void OnHighHeartRateThresholdChanged(int value)
+    {
+        if (value < 30) HighHeartRateThreshold = 30;
+        else if (value > 250) HighHeartRateThreshold = 250;
+    }
+
+    partial void OnLowHeartRateThresholdChanged(int value)
+    {
+        if (value < 30) LowHeartRateThreshold = 30;
+        else if (value > 250) LowHeartRateThreshold = 250;
+    }
+
+    partial void OnDataRetentionDaysChanged(int value)
+    {
+        if (value < 1) DataRetentionDays = 1;
+        else if (value > 365) DataRetentionDays = 365;
+    }
+
+    [RelayCommand]
+    private async Task SaveSettingsAsync()
+    {
+        try
+        {
+            _settingsService.AutoConnect = AutoConnect;
+            _settingsService.HighHeartRateThreshold = HighHeartRateThreshold;
+            _settingsService.LowHeartRateThreshold = LowHeartRateThreshold;
+            _settingsService.EnableNotifications = EnableNotifications;
+            _settingsService.EnableSoundAlert = EnableSoundAlert;
+            _settingsService.StartWithWindows = StartWithWindows;
+            _settingsService.MinimizeToTray = MinimizeToTray;
+            _settingsService.DataRetentionDays = DataRetentionDays;
+
+            await _settingsService.SaveAsync();
+            _settingsService.NotifySettingsChanged();
+            _logger.Info("设置已保存");
+
+            // 关闭设置面板
+            _dispatcher.Invoke(() =>
+            {
+                ActivePanel = "None";
+                IsSettingsPanelOpen = false;
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("保存设置失败", ex);
+        }
+    }
+
+    [RelayCommand]
+    private void ResetSettings()
+    {
+        _settingsService.ResetToDefaults();
+        LoadSettingsFromService();
+    }
+
+    // ==================== 权限 ====================
 
     [RelayCommand]
     private async Task RequestPermissionsAsync()
@@ -418,14 +609,19 @@ public partial class MainViewModel : ObservableObject
         var granted = await _bleService.RequestPermissionAsync();
         if (!granted)
         {
-            _dialogService.ShowMessage("需要蓝牙权限才能扫描设备", "权限请求");
+            _logger.Warning("需要蓝牙权限才能扫描设备");
         }
     }
 
-    [RelayCommand]
-    private async Task StopScanningCommandAsync()
+    // ==================== 清理 ====================
+
+    private void OnSettingsChanged(object? sender, EventArgs e)
     {
-        await StopScanAsync();
+        _dispatcher.Invoke(() =>
+        {
+            OverlayOpacity = _settingsService.OverlayOpacity;
+            IsMinimalMode = _settingsService.MinimalMode;
+        });
     }
 
     public void Cleanup()
@@ -433,5 +629,6 @@ public partial class MainViewModel : ObservableObject
         _bleService.HeartRateReceived -= OnHeartRateReceived;
         _bleService.ConnectionStateChanged -= OnConnectionStateChanged;
         _bleService.DeviceDiscovered -= OnDeviceDiscovered;
+        _settingsService.SettingsChanged -= OnSettingsChanged;
     }
 }

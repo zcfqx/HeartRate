@@ -3,7 +3,8 @@
     "allow": [
       "Bash(dotnet build *)",
       "Bash(powershell -Command \"Get-WinEvent -FilterHashtable @{LogName='Application'; Level=2; StartTime=\\(Get-Date\\).AddMinutes\\(-10\\)} -MaxEvents 5 2>&1 | Format-List TimeCreated,Message\")",
-      "Bash(dotnet run *)"
+      "Bash(dotnet run *)",
+      "PowerShell(Get-Content \"$env:LOCALAPPDATA\\\\HeartRateMonitor\\\\startup.log\" -Tail 30 2>$null)"
     ]
   }
 }
