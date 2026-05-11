@@ -372,6 +372,27 @@
         <Setter Property="Template" Value="{StaticResource ThemedScrollViewerTemplate}"/>
     </Style>
 
+    <!-- 主题列表框 (ThemedListBox) -->
+    <Style x:Key="ThemedListBox" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer Style="{StaticResource ThemedScrollViewer}"
+                                      Focusable="False"
+                                      Padding="{TemplateBinding Padding}">
+                            <ItemsPresenter/>
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ==================== 滑块样式 ==================== -->
 
     <!-- 滑块 (SliderStyle) -->

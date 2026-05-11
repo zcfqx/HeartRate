@@ -7,13 +7,13 @@
         xmlns:converters="clr-namespace:HeartRateMonitor.App.Converters"
         mc:Ignorable="d"
         Title="心率监控"
-        Width="300" Height="320"
+        Width="280" Height="280"
         AllowsTransparency="True"
         WindowStyle="None"
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="True"
-        ResizeMode="CanResizeWithGrip"
+        ResizeMode="NoResize"
         d:DataContext="{d:DesignInstance Type=ViewModels:MainViewModel}">
 
     <Window.Resources>
@@ -175,8 +175,8 @@
                     </Path>
                     <TextBlock Text="{Binding BpmText}"
                                Foreground="{Binding CurrentHeartRate, Converter={StaticResource HeartRateToColor}}"
-                               FontSize="32" FontWeight="Bold" FontFamily="Segoe UI Light"
-                               VerticalAlignment="Center"/>
+                               FontSize="24" FontWeight="Bold" FontFamily="Segoe UI Light"
+                               VerticalAlignment="Center" Margin="0,-2,0,0"/>
                 </StackPanel>
             </Grid>
 
@@ -185,7 +185,8 @@
                   Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
 
                 <!-- 心率图表（含左侧 min/max） -->
-                <Border x:Name="ChartBorder" CornerRadius="6" Background="{StaticResource Opacity0ABrush}">
+                <Border x:Name="ChartBorder" CornerRadius="6" Background="{StaticResource Opacity0ABrush}"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Width="220">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Style.Triggers>
@@ -247,7 +248,9 @@
                         <Border Grid.Row="1" Margin="6,0,6,6" CornerRadius="4" Background="{StaticResource Opacity0ABrush}">
                             <ListBox ItemsSource="{Binding DiscoveredDevices}" Background="Transparent"
                                      Foreground="White" BorderThickness="0" Padding="4,2"
-                                     ItemTemplate="{StaticResource DeviceItemTemplate}"/>
+                                     ItemTemplate="{StaticResource DeviceItemTemplate}"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     Style="{StaticResource ThemedListBox}"/>
                         </Border>
                     </Grid>
                 </Border>
@@ -347,17 +350,6 @@
                 </Button>
             </StackPanel>
 
-            <!-- 缩放手柄 -->
-            <ResizeGrip Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                        Width="12" Height="12" Cursor="SizeNWSE" Opacity="0.2"
-                        Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
-                <ResizeGrip.Template>
-                    <ControlTemplate TargetType="ResizeGrip">
-                        <Path Data="M1,9 L9,1 M4,9 L9,4 M7,9 L9,7"
-                              Stroke="{StaticResource Opacity4DBrush}" StrokeThickness="1" Stretch="Uniform"/>
-                    </ControlTemplate>
-                </ResizeGrip.Template>
-            </ResizeGrip>
         </Grid>
     </Border>
 </Window>
