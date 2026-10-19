@@ -114,12 +114,67 @@
                     <ToggleButton Grid.Column="1" Style="{StaticResource Switch}"
                                   IsChecked="{Binding MinimalShowChart}" VerticalAlignment="Center"/>
                 </Grid>
+
+                <Border Style="{StaticResource SeparatorLine}" Margin="0,14,0,14"/>
+
+                <TextBlock Text="极简模式尺寸" Style="{StaticResource Text.Label}" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="心形大小" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding MinimalHeartSize, StringFormat={}{0:F2} 倍}"
+                               Style="{StaticResource Text.Caption}" VerticalAlignment="Center"/>
+                </Grid>
+                <Slider Minimum="0.6" Maximum="2.0" SmallChange="0.05" LargeChange="0.1"
+                        Value="{Binding MinimalHeartSize}" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="数字字号" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding MinimalBpmFontSize, StringFormat={}{0:F0} px}"
+                               Style="{StaticResource Text.Caption}" VerticalAlignment="Center"/>
+                </Grid>
+                <Slider Minimum="28" Maximum="120" SmallChange="2" LargeChange="10"
+                        Value="{Binding MinimalBpmFontSize}" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="曲线大小" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding MinimalChartScale, StringFormat={}{0:F2} 倍}"
+                               Style="{StaticResource Text.Caption}" VerticalAlignment="Center"/>
+                </Grid>
+                <Slider Minimum="0.5" Maximum="2.5" SmallChange="0.05" LargeChange="0.25"
+                        Value="{Binding MinimalChartScale}" Margin="0,0,0,4"/>
+                <TextBlock Text="也可以极简窗口上滚动滚轮，或右键菜单选择预设尺寸。"
+                           Style="{StaticResource Text.Caption}"/>
             </StackPanel>
         </Border>
 
         <Border Style="{StaticResource Card}">
             <StackPanel>
                 <TextBlock Text="窗口行为" Style="{StaticResource Text.H2}" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="窗口置顶" Style="{StaticResource Text.Label}"/>
+                        <TextBlock Text="始终显示在其他窗口之上，方便随时查看心率。" Style="{StaticResource Text.Caption}"/>
+                    </StackPanel>
+                    <ToggleButton Grid.Column="1" Style="{StaticResource Switch}"
+                                  IsChecked="{Binding WindowTopmost}" VerticalAlignment="Center"/>
+                </Grid>
 
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>

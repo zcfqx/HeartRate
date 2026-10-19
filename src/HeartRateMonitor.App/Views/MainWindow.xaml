@@ -8,7 +8,7 @@
         Width="320" SizeToContent="Height" MaxHeight="780" MinWidth="280"
         WindowStartupLocation="Manual"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="NoResize" ShowInTaskbar="True" Topmost="True">
+        ResizeMode="NoResize" ShowInTaskbar="True">
 
     <Window.InputBindings>
         <KeyBinding Key="M" Modifiers="Control" Command="{Binding ToggleMinimalModeCommand}"/>
@@ -18,6 +18,16 @@
             Background="{DynamicResource Brush.Surface}"
             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
             CornerRadius="18" Effect="{StaticResource Shadow.Shell}">
+        <Border.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="窗口置顶" IsCheckable="True"
+                          IsChecked="{Binding WindowTopmost, Mode=OneWay}"
+                          Command="{Binding ToggleTopmostCommand}"/>
+                <Separator/>
+                <MenuItem Header="设置" Command="{Binding OpenSettingsCommand}"/>
+                <MenuItem Header="关闭到托盘" Click="OnCloseClick"/>
+            </ContextMenu>
+        </Border.ContextMenu>
         <Grid>
             <!-- ===== 普通模式：顶栏 + 组件看板 + 底栏 + 组件库 ===== -->
             <Grid x:Name="NormalView"
@@ -274,12 +284,30 @@
                   Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}}"
                   Background="Transparent"
                   ToolTip="{Binding MinimalZoneName}"
-                  MouseLeftButtonDown="OnMinimalMouseLeftButtonDown">
+                  MouseLeftButtonDown="OnMinimalMouseLeftButtonDown"
+                  PreviewMouseWheel="OnMinimalMouseWheel">
                 <Grid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="显示趋势曲线" IsCheckable="True"
                                   IsChecked="{Binding MinimalShowChart, Mode=OneWay}"
                                   Command="{Binding ToggleMinimalChartCommand}"/>
+                        <MenuItem Header="尺寸">
+                            <MenuItem Header="紧凑 (0.8)" Command="{Binding SetMinimalScaleCommand}">
+                                <MenuItem.CommandParameter><sys:Double>0.8</sys:Double></MenuItem.CommandParameter>
+                            </MenuItem>
+                            <MenuItem Header="标准 (1.0)" Command="{Binding SetMinimalScaleCommand}">
+                                <MenuItem.CommandParameter><sys:Double>1.0</sys:Double></MenuItem.CommandParameter>
+                            </MenuItem>
+                            <MenuItem Header="大 (1.25)" Command="{Binding SetMinimalScaleCommand}">
+                                <MenuItem.CommandParameter><sys:Double>1.25</sys:Double></MenuItem.CommandParameter>
+                            </MenuItem>
+                            <MenuItem Header="特大 (1.5)" Command="{Binding SetMinimalScaleCommand}">
+                                <MenuItem.CommandParameter><sys:Double>1.5</sys:Double></MenuItem.CommandParameter>
+                            </MenuItem>
+                        </MenuItem>
+                        <MenuItem Header="窗口置顶" IsCheckable="True"
+                                  IsChecked="{Binding WindowTopmost, Mode=OneWay}"
+                                  Command="{Binding ToggleTopmostCommand}"/>
                         <Separator/>
                         <MenuItem Header="背景：完全透明" Command="{Binding SetOverlayOpacityCommand}">
                             <MenuItem.CommandParameter><sys:Double>0</sys:Double></MenuItem.CommandParameter>
@@ -304,7 +332,7 @@
 
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16,10,16,10">
                     <!-- 红心 + 扩散光环：光环与心形一起随心跳脉冲 -->
-                    <Grid Width="112" Height="74" HorizontalAlignment="Center">
+                    <Grid x:Name="MinimalHeartHost" Width="112" Height="74" HorizontalAlignment="Center">
                         <Ellipse x:Name="MinimalRipple" Width="52" Height="52"
                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                  Fill="{DynamicResource Brush.HeartSoft}" Opacity="0" IsHitTestVisible="False"
@@ -345,7 +373,7 @@
                         </TextBlock.Effect>
                     </TextBlock>
 
-                    <Grid Width="128" Height="34" Margin="0,2,0,0"
+                    <Grid x:Name="MinimalChartHost" Width="128" Height="34" Margin="0,2,0,0"
                           Visibility="{Binding MinimalShowChart, Converter={StaticResource BoolToVisibility}}">
                         <controls:Sparkline Points="{Binding SessionPoints}"
                                             LineBrush="{DynamicResource Brush.HeartGradient}"

@@ -20,6 +20,7 @@ internal sealed class ChartWidget : WidgetViewBase
         _spark.SetResourceReference(Sparkline.FillBrushProperty, "Brush.AccentSoft");
         _spark.MinimumBpm = 50;
         _spark.MaximumBpm = 140;
+        _spark.ShowHoverValue = true;
 
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition());

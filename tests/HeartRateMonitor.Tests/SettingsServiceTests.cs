@@ -84,6 +84,102 @@ public class SettingsServiceTests
     }
 
     [TestMethod]
+    public void MinimalHeartSize_Defaults_To_1()
+    {
+        Assert.AreEqual(1.0, _settings.MinimalHeartSize, 0.001);
+    }
+
+    [TestMethod]
+    public void MinimalBpmFontSize_Defaults_To_56()
+    {
+        Assert.AreEqual(56.0, _settings.MinimalBpmFontSize, 0.001);
+    }
+
+    [TestMethod]
+    public void MinimalChartScale_Defaults_To_1()
+    {
+        Assert.AreEqual(1.0, _settings.MinimalChartScale, 0.001);
+    }
+
+    [TestMethod]
+    public async Task MinimalSizes_RoundTrips()
+    {
+        _settings.MinimalHeartSize = 1.4;
+        _settings.MinimalBpmFontSize = 78;
+        _settings.MinimalChartScale = 1.8;
+        await _settings.SaveAsync();
+
+        var reloaded = new SettingsService(_repository, new NullLogger());
+        await reloaded.LoadAsync();
+
+        Assert.AreEqual(1.4, reloaded.MinimalHeartSize, 0.001);
+        Assert.AreEqual(78.0, reloaded.MinimalBpmFontSize, 0.001);
+        Assert.AreEqual(1.8, reloaded.MinimalChartScale, 0.001);
+    }
+
+    [TestMethod]
+    public void MinimalSizes_Are_Clamped_To_Valid_Ranges()
+    {
+        _settings.MinimalHeartSize = 5;
+        _settings.MinimalBpmFontSize = 500;
+        _settings.MinimalChartScale = 9;
+
+        Assert.AreEqual(2.0, _settings.MinimalHeartSize, 0.001);
+        Assert.AreEqual(120.0, _settings.MinimalBpmFontSize, 0.001);
+        Assert.AreEqual(2.5, _settings.MinimalChartScale, 0.001);
+
+        _settings.MinimalHeartSize = 0.1;
+        _settings.MinimalBpmFontSize = 1;
+        _settings.MinimalChartScale = 0.1;
+
+        Assert.AreEqual(0.6, _settings.MinimalHeartSize, 0.001);
+        Assert.AreEqual(28.0, _settings.MinimalBpmFontSize, 0.001);
+        Assert.AreEqual(0.5, _settings.MinimalChartScale, 0.001);
+    }
+
+    [TestMethod]
+    public void MinimalSizes_ResetToDefaults_Restore_Original_Visual()
+    {
+        _settings.MinimalHeartSize = 1.5;
+        _settings.MinimalBpmFontSize = 100;
+        _settings.MinimalChartScale = 2.0;
+
+        _settings.ResetToDefaults();
+
+        Assert.AreEqual(1.0, _settings.MinimalHeartSize, 0.001);
+        Assert.AreEqual(56.0, _settings.MinimalBpmFontSize, 0.001);
+        Assert.AreEqual(1.0, _settings.MinimalChartScale, 0.001);
+    }
+
+    [TestMethod]
+    public void WindowTopmost_Defaults_To_True()
+    {
+        Assert.IsTrue(_settings.WindowTopmost);
+    }
+
+    [TestMethod]
+    public async Task WindowTopmost_RoundTrips()
+    {
+        _settings.WindowTopmost = false;
+        await _settings.SaveAsync();
+
+        var reloaded = new SettingsService(_repository, new NullLogger());
+        await reloaded.LoadAsync();
+
+        Assert.IsFalse(reloaded.WindowTopmost);
+    }
+
+    [TestMethod]
+    public void WindowTopmost_ResetToDefaults_Restores_True()
+    {
+        _settings.WindowTopmost = false;
+
+        _settings.ResetToDefaults();
+
+        Assert.IsTrue(_settings.WindowTopmost);
+    }
+
+    [TestMethod]
     public async Task OverlayOpacity_Zero_RoundTrips()
     {
         _settings.OverlayOpacity = 0;

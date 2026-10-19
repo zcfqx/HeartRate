@@ -184,6 +184,70 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>极简模式心形/光环缩放比例（0.6–2.0）。</summary>
+    public double MinimalHeartSize
+    {
+        get => _settings.MinimalHeartSize;
+        set
+        {
+            if (Math.Abs(_settings.MinimalHeartSize - value) < 0.001)
+            {
+                return;
+            }
+
+            _settings.MinimalHeartSize = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>极简模式心率数字字号（px，28–120）。</summary>
+    public double MinimalBpmFontSize
+    {
+        get => _settings.MinimalBpmFontSize;
+        set
+        {
+            if (Math.Abs(_settings.MinimalBpmFontSize - value) < 0.5)
+            {
+                return;
+            }
+
+            _settings.MinimalBpmFontSize = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>极简模式趋势曲线区域缩放比例（0.5–2.5）。</summary>
+    public double MinimalChartScale
+    {
+        get => _settings.MinimalChartScale;
+        set
+        {
+            if (Math.Abs(_settings.MinimalChartScale - value) < 0.001)
+            {
+                return;
+            }
+
+            _settings.MinimalChartScale = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>窗口置顶：始终显示在其他窗口之上。</summary>
+    public bool WindowTopmost
+    {
+        get => _settings.WindowTopmost;
+        set
+        {
+            if (_settings.WindowTopmost == value)
+            {
+                return;
+            }
+
+            _settings.WindowTopmost = value;
+            OnPropertyChanged();
+        }
+    }
+
     // === 连接 ===
 
     public bool AutoConnect

@@ -53,13 +53,43 @@ public partial class MainWindow : Window
     {
         try
         {
+            // 窗口置顶：设置页/托盘/右键菜单共用同一个开关。
+            Topmost = _settings.WindowTopmost;
+
             if (_viewModel.IsMinimalMode)
             {
-                // 极简模式固定为紧凑宽度；同时收紧 Min/Max，避免窗口被拉伸或还原成看板宽度。
-                MinWidth = 176;
-                MaxWidth = 180;
-                MaxHeight = 320;
-                Width = 180;
+                // 极简模式：心形/光环/数字/曲线都按设置缩放；默认值（1.0 / 56 / 1.0）即原有视觉。
+                var heart = Math.Clamp(_settings.MinimalHeartSize, 0.6, 2.0);
+                var chart = Math.Clamp(_settings.MinimalChartScale, 0.5, 2.5);
+
+                MinimalHeart.Width = 50 * heart;
+                MinimalHeart.Height = 50 * heart;
+                MinimalHeartHost.Width = 112 * heart;
+                MinimalHeartHost.Height = 74 * heart;
+                MinimalRipple.Width = 52 * heart;
+                MinimalRipple.Height = 52 * heart;
+                MinimalRippleOuter.Width = 52 * heart;
+                MinimalRippleOuter.Height = 52 * heart;
+                MinimalBpm.FontSize = Math.Clamp(_settings.MinimalBpmFontSize, 28, 120);
+                MinimalBpm.Margin = new Thickness(0, -2 * heart, 0, 0);
+                MinimalChartHost.Width = 128 * chart;
+                MinimalChartHost.Height = 34 * chart;
+
+                // 窗口宽度随内容自适应：默认 heart=chart=1 时仍为 180；+52 是窗口/面板留白，
+                // 保证大尺寸时曲线不会被窗口边缘裁切。
+                var width = Math.Clamp(
+                    Math.Max(180, Math.Max(112 * heart, 128 * chart) + 52),
+                    180,
+                    520);
+
+                // 先把上限放宽，避免 MinWidth 增大时被上一次的 MaxWidth 截断。
+                MaxWidth = 520;
+                MinWidth = width;
+                MaxWidth = width;
+                Width = width;
+
+                // 大尺寸时窗口需要更高，放宽 MaxHeight 以免数字/曲线被裁切。
+                MaxHeight = 780;
             }
             else
             {
@@ -323,6 +353,23 @@ public partial class MainWindow : Window
         }
 
         SaveWindowPosition();
+    }
+
+    /// <summary>
+    /// 极简模式下滚轮直接缩放：每格 ±0.05，心形与曲线同比例、数字字号按 56*scale 同步，
+    /// 全部 Clamp 到设置范围后交给 <see cref="MainViewModel.SetMinimalScaleCommand"/> 持久化。
+    /// </summary>
+    private void OnMinimalMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!_viewModel.IsMinimalMode || e.Delta == 0)
+        {
+            return;
+        }
+
+        var step = e.Delta > 0 ? 0.05 : -0.05;
+        var scale = Math.Clamp(_settings.MinimalHeartSize + step, 0.6, 2.0);
+        _viewModel.SetMinimalScaleCommand.Execute(scale);
+        e.Handled = true;
     }
 
     // === 生命周期 ===

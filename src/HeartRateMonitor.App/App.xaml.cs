@@ -473,6 +473,45 @@ public partial class App : Application
         };
         menu.Items.Add(chartItem);
 
+        // 极简模式的整体尺寸预设：心形、数字与曲线一起缩放。
+        var minimalSizeItem = new MenuItem { Header = "极简模式尺寸" };
+        foreach (var preset in new (string Label, double Value)[]
+                 {
+                     ("紧凑 (0.8)", 0.8), ("标准 (1.0)", 1.0), ("大 (1.25)", 1.25), ("特大 (1.5)", 1.5)
+                 })
+        {
+            var presetItem = new MenuItem { Header = preset.Label };
+            var scale = preset.Value;
+            presetItem.Click += (_, _) =>
+            {
+                var viewModel = _serviceProvider?.GetService<MainViewModel>();
+                viewModel?.SetMinimalScaleCommand.Execute(scale);
+            };
+            minimalSizeItem.Items.Add(presetItem);
+        }
+
+        menu.Items.Add(minimalSizeItem);
+
+        // 窗口置顶：让悬浮窗始终显示在其他窗口之上，随时能看到心率。
+        var topmostItem = new MenuItem { Header = "窗口置顶", IsCheckable = true };
+        if (mainViewModel is not null)
+        {
+            topmostItem.IsChecked = mainViewModel.WindowTopmost;
+        }
+
+        topmostItem.Click += (_, _) =>
+        {
+            var viewModel = _serviceProvider?.GetService<MainViewModel>();
+            if (viewModel is null)
+            {
+                return;
+            }
+
+            viewModel.ToggleTopmostCommand.Execute(null);
+            topmostItem.IsChecked = viewModel.WindowTopmost;
+        };
+        menu.Items.Add(topmostItem);
+
         var backgroundItem = new MenuItem { Header = "背景不透明度" };
         foreach (var preset in new (string Label, double Value)[]
                  {
@@ -550,9 +589,12 @@ public partial class App : Application
             window.WindowState = WindowState.Normal;
         }
 
+        // 先用“临时置顶”把窗口带到最前，再恢复用户设置的置顶状态。
+        // （原实现无条件置 false，会让设置了置顶的窗口在托盘/二次启动激活后失去置顶。）
+        var wantTopmost = window.Topmost;
         window.Activate();
         window.Topmost = true;
-        window.Topmost = false;
+        window.Topmost = wantTopmost;
         window.Focus();
         DebugLog($"ShowMainWindow: visible={window.IsVisible} state={window.WindowState}");
     }

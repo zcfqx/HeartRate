@@ -24,9 +24,13 @@ public class SettingsService : ISettingsService
     private const string KeyLanguage = "Language";
     private const string KeyStartWithWindows = "StartWithWindows";
     private const string KeyMinimizeToTray = "MinimizeToTray";
+    private const string KeyWindowTopmost = "WindowTopmost";
     private const string KeyRetentionDays = "DataRetentionDays";
     private const string KeyMinimalMode = "MinimalMode";
     private const string KeyMinimalShowChart = "MinimalShowChart";
+    private const string KeyMinimalHeartSize = "MinimalHeartSize";
+    private const string KeyMinimalBpmFontSize = "MinimalBpmFontSize";
+    private const string KeyMinimalChartScale = "MinimalChartScale";
     private const string KeyWindowLeft = "WindowLeft";
     private const string KeyWindowTop = "WindowTop";
     private const string KeyWindowWidth = "WindowWidth";
@@ -46,9 +50,36 @@ public class SettingsService : ISettingsService
     public string Language { get; set; } = "zh-CN";
     public bool StartWithWindows { get; set; } = false;
     public bool MinimizeToTray { get; set; } = true;
+    public bool WindowTopmost { get; set; } = true;
     public int DataRetentionDays { get; set; } = 30;
     public bool MinimalMode { get; set; } = false;
     public bool MinimalShowChart { get; set; } = true;
+
+    private double _minimalHeartSize = 1.0;
+    private double _minimalBpmFontSize = 56;
+    private double _minimalChartScale = 1.0;
+
+    /// <summary>极简模式心形/光环缩放比例，范围 0.6–2.0。</summary>
+    public double MinimalHeartSize
+    {
+        get => _minimalHeartSize;
+        set => _minimalHeartSize = double.IsFinite(value) ? Math.Clamp(value, 0.6, 2.0) : 1.0;
+    }
+
+    /// <summary>极简模式心率数字字号（px），范围 28–120。</summary>
+    public double MinimalBpmFontSize
+    {
+        get => _minimalBpmFontSize;
+        set => _minimalBpmFontSize = double.IsFinite(value) ? Math.Clamp(value, 28, 120) : 56;
+    }
+
+    /// <summary>极简模式趋势曲线区域缩放比例，范围 0.5–2.5。</summary>
+    public double MinimalChartScale
+    {
+        get => _minimalChartScale;
+        set => _minimalChartScale = double.IsFinite(value) ? Math.Clamp(value, 0.5, 2.5) : 1.0;
+    }
+
     public double WindowLeft { get; set; } = 100;
     public double WindowTop { get; set; } = 100;
     public double WindowWidth { get; set; } = 320;
@@ -80,9 +111,13 @@ public class SettingsService : ISettingsService
             Language = GetString(settings, KeyLanguage) ?? "zh-CN";
             StartWithWindows = GetBool(settings, KeyStartWithWindows, false);
             MinimizeToTray = GetBool(settings, KeyMinimizeToTray, true);
+            WindowTopmost = GetBool(settings, KeyWindowTopmost, true);
             DataRetentionDays = GetInt(settings, KeyRetentionDays, 30);
             MinimalMode = GetBool(settings, KeyMinimalMode, false);
             MinimalShowChart = GetBool(settings, KeyMinimalShowChart, true);
+            MinimalHeartSize = GetDouble(settings, KeyMinimalHeartSize, 1.0);
+            MinimalBpmFontSize = GetDouble(settings, KeyMinimalBpmFontSize, 56);
+            MinimalChartScale = GetDouble(settings, KeyMinimalChartScale, 1.0);
             WindowLeft = GetDouble(settings, KeyWindowLeft, 100);
             WindowTop = GetDouble(settings, KeyWindowTop, 100);
             WindowWidth = GetDouble(settings, KeyWindowWidth, 320);
@@ -117,9 +152,13 @@ public class SettingsService : ISettingsService
                 [KeyLanguage] = Language,
                 [KeyStartWithWindows] = StartWithWindows.ToString(),
                 [KeyMinimizeToTray] = MinimizeToTray.ToString(),
+                [KeyWindowTopmost] = WindowTopmost.ToString(),
                 [KeyRetentionDays] = DataRetentionDays.ToString(),
                 [KeyMinimalMode] = MinimalMode.ToString(),
                 [KeyMinimalShowChart] = MinimalShowChart.ToString(),
+                [KeyMinimalHeartSize] = MinimalHeartSize.ToString("F2"),
+                [KeyMinimalBpmFontSize] = MinimalBpmFontSize.ToString("F0"),
+                [KeyMinimalChartScale] = MinimalChartScale.ToString("F2"),
                 [KeyWindowLeft] = WindowLeft.ToString("F0"),
                 [KeyWindowTop] = WindowTop.ToString("F0"),
                 [KeyWindowWidth] = WindowWidth.ToString("F0"),
@@ -176,9 +215,13 @@ public class SettingsService : ISettingsService
         Language = "zh-CN";
         StartWithWindows = false;
         MinimizeToTray = true;
+        WindowTopmost = true;
         DataRetentionDays = 30;
         MinimalMode = false;
         MinimalShowChart = true;
+        MinimalHeartSize = 1.0;
+        MinimalBpmFontSize = 56;
+        MinimalChartScale = 1.0;
         WindowLeft = 100;
         WindowTop = 100;
         WindowWidth = 320;

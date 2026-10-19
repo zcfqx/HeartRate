@@ -75,6 +75,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _minimalZoneColor = "#6366F1";
 
+    /// <summary>窗口置顶：保持在其他窗口之上（托盘/右键菜单/设置页均可切换）。</summary>
+    [ObservableProperty]
+    private bool _windowTopmost = true;
+
     /// <summary>极简模式趋势图数据（随心跳刷新）。</summary>
     public IReadOnlyList<HeartRatePoint> SessionPoints => _session.Points;
 
@@ -116,6 +120,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         IsMinimalMode = _settings.MinimalMode;
         MinimalShowChart = _settings.MinimalShowChart;
+        WindowTopmost = _settings.WindowTopmost;
 
         UpdateConnection(_ble.State, _ble.ConnectedDevice?.DeviceName);
         RefreshLayout();
@@ -193,11 +198,36 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _ = SaveSettingsAsync();
     }
 
+    /// <summary>切换窗口置顶：立即生效并保存，托盘/右键菜单/设置页共用。</summary>
+    [RelayCommand]
+    private void ToggleTopmost()
+    {
+        WindowTopmost = !WindowTopmost;
+        _settings.WindowTopmost = WindowTopmost;
+        _settings.NotifySettingsChanged();
+        _ = SaveSettingsAsync();
+    }
+
     /// <summary>设置悬浮窗背景不透明度（0 = 完全透明，只保留红心与数字）。</summary>
     [RelayCommand]
     private void SetOverlayOpacity(double opacity)
     {
         _settings.OverlayOpacity = Math.Clamp(opacity, 0.0, 1.0);
+        _settings.NotifySettingsChanged();
+        _ = SaveSettingsAsync();
+    }
+
+    /// <summary>
+    /// 整体缩放极简模式：心形与曲线同比例（0.6–2.0），数字字号按 56px 基准同步并 Clamp 到 28–120。
+    /// 右键菜单、托盘菜单与滚轮都走这一条路径，保证设置一致且持久化。
+    /// </summary>
+    [RelayCommand]
+    private void SetMinimalScale(double scale)
+    {
+        var clamped = Math.Clamp(scale, 0.6, 2.0);
+        _settings.MinimalHeartSize = clamped;
+        _settings.MinimalChartScale = clamped;
+        _settings.MinimalBpmFontSize = Math.Clamp(Math.Round(56 * clamped), 28, 120);
         _settings.NotifySettingsChanged();
         _ = SaveSettingsAsync();
     }
@@ -333,6 +363,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (MinimalShowChart != _settings.MinimalShowChart)
         {
             MinimalShowChart = _settings.MinimalShowChart;
+        }
+
+        if (WindowTopmost != _settings.WindowTopmost)
+        {
+            WindowTopmost = _settings.WindowTopmost;
         }
     });
 

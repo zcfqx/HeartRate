@@ -506,17 +506,42 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type MenuItem}">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
-                                          VerticalAlignment="Center" />
-                    </Border>
+                    <Grid>
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter Grid.Column="0" ContentSource="Header" RecognizesAccessKey="True"
+                                                  VerticalAlignment="Center" />
+                                <TextBlock x:Name="SubmenuArrow" Grid.Column="1" Text="›"
+                                           Margin="12,0,0,0" FontSize="13" Opacity="0.65"
+                                           VerticalAlignment="Center" Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+                        <!-- 子菜单：WPF 默认模板缺失的弹出层，极简右键菜单的“尺寸”与托盘
+                             “极简模式尺寸”都依赖它，否则点击父项不会展开任何内容。 -->
+                        <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsSubmenuOpen}"
+                               Placement="Right" HorizontalOffset="-6" VerticalOffset="-8"
+                               AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                            <Border Background="{DynamicResource Brush.SurfaceAlt}"
+                                    BorderBrush="{DynamicResource Brush.Border}"
+                                    BorderThickness="1" CornerRadius="10" Padding="4" Margin="8">
+                                <ItemsPresenter />
+                            </Border>
+                        </Popup>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                        <Trigger Property="HasItems" Value="True">
+                            <Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

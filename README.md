@@ -84,25 +84,25 @@
 
 ## 界面预览
 
-| 主悬浮窗（深色） | 组件库浮层 |
-|:---:|:---:|
+| 主悬浮窗（深色）                                | 组件库浮层                                       |
+|:---------------------------------------:|:-------------------------------------------:|
 | ![主悬浮窗](docs/screenshots/main-dark.png) | ![组件库](docs/screenshots/main-add-panel.png) |
-| 组件卡片看板 + 连接状态 + 会话底栏 | 从组件库添加组件（含外部插件贡献的「呼吸引导」） |
+| 组件卡片看板 + 连接状态 + 会话底栏                    | 从组件库添加组件（含外部插件贡献的「呼吸引导」）                    |
 
-| 设置中心（深色） | 设置中心（浅色） |
-|:---:|:---:|
+| 设置中心（深色）                                     | 设置中心（浅色）                                      |
+|:--------------------------------------------:|:---------------------------------------------:|
 | ![设置-深色](docs/screenshots/settings-dark.png) | ![设置-浅色](docs/screenshots/settings-light.png) |
-| 左侧导航 + 外观页 + 插件贡献的「呼吸引导」页 | 浅色主题即时切换，强调色可换 |
+| 左侧导航 + 外观页 + 插件贡献的「呼吸引导」页                    | 浅色主题即时切换，强调色可换                                |
 
-| 极简模式（带曲线） | 极简模式（无曲线） | 极简模式（背景 0% 透明） |
-|:---:|:---:|:---:|
+| 极简模式（带曲线）                                   | 极简模式（无曲线）                                            | 极简模式（背景 0% 透明）                                          |
+|:-------------------------------------------:|:----------------------------------------------------:|:-------------------------------------------------------:|
 | ![极简-曲线](docs/screenshots/main-minimal.png) | ![极简-无曲线](docs/screenshots/main-minimal-nochart.png) | ![极简-透明](docs/screenshots/main-minimal-transparent.png) |
-| 红色心跳图标 + 心率数字（离线渲染时为 `--`） | 右键菜单「显示趋势曲线」可关 | 背景完全透明，只留心跳与数字 |
+| 红色心跳图标 + 心率数字（离线渲染时为 `--`）                  | 右键菜单「显示趋势曲线」可关                                       | 背景完全透明，只留心跳与数字                                          |
 
-| 实机连接（看板） | 极简模式（实机连接） |
-|:---:|:---:|
+| 实机连接（看板）                                     | 极简模式（实机连接）                                            |
+|:--------------------------------------------:|:-----------------------------------------------------:|
 | ![实机连接](docs/screenshots/main-connected.png) | ![极简-实机](docs/screenshots/main-minimal-connected.png) |
-| 连接 HUAWEI Band HR-8F4：65 BPM、区间、趋势、会话时长 | 红色心跳 + 大号数字 + 红色趋势曲线 |
+| 连接 HUAWEI Band HR-8F4：65 BPM、区间、趋势、会话时长      | 红色心跳 + 大号数字 + 红色趋势曲线                                  |
 
 > 前 8 张由仓库内 `tools/HeartRateMonitor.UiSmoke` 离线渲染生成（`RenderTargetBitmap`，非系统截图）：`dotnet run --project tools/HeartRateMonitor.UiSmoke`。运行前请先退出正在运行的应用（单实例）。`main-connected.png` / `main-minimal-connected.png` 为连接真实手环时的运行时截图。更多设计说明见 [docs/UI-REDESIGN.md](docs/UI-REDESIGN.md)。
 
@@ -110,12 +110,12 @@
 
 ## 系统要求
 
-| 项目 | 要求 |
-|------|------|
-| **操作系统** | Windows 10 (build 19041+) 或 Windows 11 |
-| **运行时** | [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
-| **蓝牙** | Bluetooth 4.0+ (BLE) 适配器 |
-| **内存** | 100 MB 可用内存 |
+| 项目       | 要求                                                                           |
+| -------- | ---------------------------------------------------------------------------- |
+| **操作系统** | Windows 10 (build 19041+) 或 Windows 11                                       |
+| **运行时**  | [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
+| **蓝牙**   | Bluetooth 4.0+ (BLE) 适配器                                                     |
+| **内存**   | 100 MB 可用内存                                                                  |
 
 ---
 
@@ -204,51 +204,51 @@ powershell -ExecutionPolicy Bypass -File scripts\Install-Shortcut.ps1 -Uninstall
 └──────────────────────────────────────────┘
 ```
 
-| 操作 | 说明 |
-|------|------|
-| 拖动顶栏 | 移动悬浮窗；位置自动记忆 |
-| 点击 ＋ | 打开组件库浮层，点击任意组件加入看板 |
-| 点击 ✎ | 进入编辑模式，组件右上角出现移除按钮 |
-| 点击 ⚙ | 打开设置中心 |
-| 点击 ⤢（极简按钮） | 切换到极简模式 |
-| 点击 ─ / 关闭 | 最小化到托盘（可关闭「关闭时最小化」改为退出） |
-| 托盘图标 | 左键显示/隐藏窗口，右键菜单：显示主窗口 / 设置 / 极简模式 / 插件命令 / 退出 |
+| 操作         | 说明                                           |
+| ---------- | -------------------------------------------- |
+| 拖动顶栏       | 移动悬浮窗；位置自动记忆                                 |
+| 点击 ＋       | 打开组件库浮层，点击任意组件加入看板                           |
+| 点击 ✎       | 进入编辑模式，组件右上角出现移除按钮                           |
+| 点击 ⚙       | 打开设置中心                                       |
+| 点击 ⤢（极简按钮） | 切换到极简模式                                      |
+| 点击 ─ / 关闭  | 最小化到托盘（可关闭「关闭时最小化」改为退出）                      |
+| 托盘图标       | 左键显示/隐藏窗口，右键菜单：显示主窗口 / 设置 / 极简模式 / 插件命令 / 退出 |
 
 ### 极简模式
 
 只显示「心跳图标 + 大号 BPM + 当前区间」的小窗口，适合长期贴在桌面角落：
 
-| 操作 | 说明 |
-|------|------|
+| 操作                   | 说明                                      |
+| -------------------- | --------------------------------------- |
 | 顶栏的极简按钮（或托盘菜单「极简模式」） | 进入 / 退出极简模式 |
-| 极简窗口内双击 | 退出极简模式 |
-| 极简窗口内拖动 | 移动窗口（位置与普通模式共用） |
-| 极简窗口右键 | 显示趋势曲线（可勾选开关）/ 退出极简 / 设置 / 最小化 / 关闭 |
-| 设置 → 外观 → 极简模式 | 默认进入极简、是否显示趋势曲线 |
-| 设置 → 外观 → 不透明度 | 调到 0% 时窗口背景完全透明，只保留文字与图形 |
+| 极简窗口内双击              | 退出极简模式                                  |
+| 极简窗口内拖动              | 移动窗口（位置与普通模式共用）                         |
+| 极简窗口右键               | 显示趋势曲线（可勾选开关）/ 退出极简 / 设置 / 最小化 / 关闭     |
+| 设置 → 外观 → 极简模式       | 默认进入极简、是否显示趋势曲线                         |
+| 设置 → 外观 → 不透明度       | 调到 0% 时窗口背景完全透明，只保留文字与图形                |
 
 ### 内置组件
 
-| 组件 | 说明 | 默认显示 |
-|------|------|:--------:|
-| `bpm` 心率 | 大号 BPM、单位、区间标签、心跳脉冲动画 | ✅ |
-| `chart` 心率趋势 | 自绘 Sparkline 曲线 + 最近段最小/最大值 | ✅ |
-| `zone` 心率区间 | 五段区间条，高亮当前区间 | — |
-| `device` 设备连接 | 内嵌扫描、设备列表、连接/断开 | ✅ |
-| `stats` 会话统计 | 本次会话平均 / 最高 / 最低 | — |
-| `session` 本次会话 | 时长、卡路里、采样数、开始新会话 | — |
-| `clock` 时钟 | 当前时间与日期 | — |
+| 组件             | 说明                          | 默认显示 |
+| -------------- | --------------------------- |:----:|
+| `bpm` 心率       | 大号 BPM、单位、区间标签、心跳脉冲动画       | ✅    |
+| `chart` 心率趋势   | 自绘 Sparkline 曲线 + 最近段最小/最大值 | ✅    |
+| `zone` 心率区间    | 五段区间条，高亮当前区间                | —    |
+| `device` 设备连接  | 内嵌扫描、设备列表、连接/断开             | ✅    |
+| `stats` 会话统计   | 本次会话平均 / 最高 / 最低            | —    |
+| `session` 本次会话 | 时长、卡路里、采样数、开始新会话            | —    |
+| `clock` 时钟     | 当前时间与日期                     | —    |
 
 ### 设置中心
 
-| 页面 | 内容 |
-|------|------|
-| 外观 | 深色/浅色主题、8 种强调色、不透明度、窗口宽度、托盘/开机自启 |
-| 连接 | 当前连接状态、重连、断开、打开系统蓝牙设置、自动连接 |
-| 提醒 | 通知/声音开关、心率上下限阈值 |
-| 数据 | 数据保留天数、清理数据、打开数据/日志目录 |
-| 功能插件 | 插件列表：启用/禁用、重新加载、卸载、打开插件目录、重新扫描 |
-| 关于 | 版本、插件统计、数据/插件路径 |
+| 页面    | 内容                                            |
+| ----- | --------------------------------------------- |
+| 外观    | 深色/浅色主题、8 种强调色、不透明度、窗口宽度、托盘/开机自启              |
+| 连接    | 当前连接状态、重连、断开、打开系统蓝牙设置、自动连接                    |
+| 提醒    | 通知/声音开关、心率上下限阈值                               |
+| 数据    | 数据保留天数、清理数据、打开数据/日志目录                         |
+| 功能插件  | 插件列表：启用/禁用、重新加载、卸载、打开插件目录、重新扫描                |
+| 关于    | 版本、插件统计、数据/插件路径                               |
 | 插件贡献页 | 由插件通过 `SettingsSectionDescriptor` 注入（示例：呼吸引导） |
 
 ---
@@ -260,11 +260,11 @@ powershell -ExecutionPolicy Bypass -File scripts\Install-Shortcut.ps1 -Uninstall
 
 ### 插件能提供什么
 
-| 扩展点 | 描述符 | 表现 |
-|--------|--------|------|
-| 组件 | `WidgetDescriptor` | 出现在「组件库」，可加入主看板 |
-| 设置页 | `SettingsSectionDescriptor` | 作为一页加入设置中心左侧导航 |
-| 命令 | `CommandDescriptor` | 出现在托盘右键菜单（可执行任意逻辑） |
+| 扩展点 | 描述符                         | 表现                 |
+| --- | --------------------------- | ------------------ |
+| 组件  | `WidgetDescriptor`          | 出现在「组件库」，可加入主看板    |
+| 设置页 | `SettingsSectionDescriptor` | 作为一页加入设置中心左侧导航     |
+| 命令  | `CommandDescriptor`         | 出现在托盘右键菜单（可执行任意逻辑） |
 
 ### 插件放置位置
 
@@ -338,28 +338,28 @@ dotnet build samples/Breathing/Breathing.csproj -c Debug
 
 ### 技术栈
 
-| 组件 | 技术 | 说明 |
-|------|------|------|
-| UI 框架 | WPF / .NET 8 | 无边框悬浮窗、XAML + 纯 C# 组件视图 |
-| MVVM | CommunityToolkit.Mvvm 8.3.2 | 源生成器、`ObservableProperty`、`RelayCommand` |
-| BLE 通信 | Windows BLE API | `Windows.Devices.Bluetooth` 原生 API |
-| 图表 | 自研 `Sparkline` | `FrameworkElement` + `StreamGeometry` 自绘 |
-| 数据库 | SQLite + Dapper | 本地关系型存储 |
-| 日志 | 自研 `FileLogger` | 按天滚动、4MB 轮转、保留 7 天 |
-| 托盘 | 自研 `TrayIcon` | `Shell_NotifyIcon` P/Invoke |
-| 依赖注入 | Microsoft.Extensions.DI 8.0.1 | 内置 DI 容器 |
-| 测试 | MSTest 3.1.1 | 79 个单元测试 |
+| 组件     | 技术                            | 说明                                       |
+| ------ | ----------------------------- | ---------------------------------------- |
+| UI 框架  | WPF / .NET 8                  | 无边框悬浮窗、XAML + 纯 C# 组件视图                  |
+| MVVM   | CommunityToolkit.Mvvm 8.3.2   | 源生成器、`ObservableProperty`、`RelayCommand` |
+| BLE 通信 | Windows BLE API               | `Windows.Devices.Bluetooth` 原生 API       |
+| 图表     | 自研 `Sparkline`                | `FrameworkElement` + `StreamGeometry` 自绘 |
+| 数据库    | SQLite + Dapper               | 本地关系型存储                                  |
+| 日志     | 自研 `FileLogger`               | 按天滚动、4MB 轮转、保留 7 天                       |
+| 托盘     | 自研 `TrayIcon`                 | `Shell_NotifyIcon` P/Invoke              |
+| 依赖注入   | Microsoft.Extensions.DI 8.0.1 | 内置 DI 容器                                 |
+| 测试     | MSTest 3.1.1                  | 79 个单元测试                                 |
 
 ### 轻量化：依赖裁剪对比
 
-| 依赖 | v1 | v2 | 替代方案 |
-|------|:--:|:--:|----------|
-| LiveChartsCore.SkiaSharpView.WPF（含 SkiaSharp 原生库） | ✅ | ❌ 移除 | 自绘 `Sparkline` |
-| Serilog + Sinks.File | ✅ | ❌ 移除 | 自研 `FileLogger` |
-| Hardcodet.NotifyIcon.Wpf | ✅ | ❌ 移除 | 自研 Win32 `TrayIcon` |
-| Microsoft.Extensions.Hosting | ✅ | ❌ 移除 | 直接使用 DI 容器 |
-| CommunityToolkit.Mvvm | ✅ | ✅ 保留 | — |
-| Microsoft.Extensions.DependencyInjection | ✅ | ✅ 保留 | — |
+| 依赖                                                | v1  | v2   | 替代方案                |
+| ------------------------------------------------- |:---:|:----:| ------------------- |
+| LiveChartsCore.SkiaSharpView.WPF（含 SkiaSharp 原生库） | ✅   | ❌ 移除 | 自绘 `Sparkline`      |
+| Serilog + Sinks.File                              | ✅   | ❌ 移除 | 自研 `FileLogger`     |
+| Hardcodet.NotifyIcon.Wpf                          | ✅   | ❌ 移除 | 自研 Win32 `TrayIcon` |
+| Microsoft.Extensions.Hosting                      | ✅   | ❌ 移除 | 直接使用 DI 容器          |
+| CommunityToolkit.Mvvm                             | ✅   | ✅ 保留 | —                   |
+| Microsoft.Extensions.DependencyInjection          | ✅   | ✅ 保留 | —                   |
 
 ### 分层架构
 
@@ -467,40 +467,40 @@ HeartRate/
 
 配置持久化在 SQLite 的 `Settings` 表（Key/Value），新增键无需改表结构。
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `Theme` | string | `Dark` | 主题：`Dark` / `Light` |
-| `AccentColor` | string | `#6366F1` | 强调色（8 个预设色可换） |
-| `OverlayOpacity` | double | `1.0` | 悬浮窗不透明度 0.0–1.0（0 = 背景完全透明） |
-| `WindowWidth` | double | `320` | 悬浮窗宽度 280–520 |
-| `WindowLeft` / `WindowTop` | double | — | 窗口位置 |
-| `MinimalMode` | bool | `false` | 是否进入极简模式 |
-| `MinimalShowChart` | bool | `true` | 极简模式下是否显示趋势曲线 |
-| `Widgets` | string | `""` | 组件布局（JSON 字符串数组，空 = 默认布局） |
-| `DisabledPlugins` | string | `""` | 已禁用的插件 id（`;` 分隔） |
-| `MinimizeToTray` | bool | `true` | 关闭窗口时最小化到托盘 |
-| `StartWithWindows` | bool | `false` | 开机自启 |
-| `AutoConnect` | bool | `true` | 启动自动连接上次设备 |
-| `LastDeviceId` / `LastDeviceName` | string | — | 上次连接设备 |
-| `HighHeartRateThreshold` | int | `160` | 心率上限提醒 |
-| `LowHeartRateThreshold` | int | `50` | 心率下限提醒 |
-| `EnableNotifications` | bool | `true` | 异常通知 |
-| `EnableSoundAlert` | bool | `false` | 声音提醒 |
-| `DataRetentionDays` | int | `30` | 数据保留天数 |
-| `Language` | string | `zh-CN` | 界面语言（预留给多语言） |
+| 配置项                               | 类型     | 默认值       | 说明                          |
+| --------------------------------- | ------ | --------- | --------------------------- |
+| `Theme`                           | string | `Dark`    | 主题：`Dark` / `Light`         |
+| `AccentColor`                     | string | `#6366F1` | 强调色（8 个预设色可换）               |
+| `OverlayOpacity`                  | double | `1.0`     | 悬浮窗不透明度 0.0–1.0（0 = 背景完全透明） |
+| `WindowWidth`                     | double | `320`     | 悬浮窗宽度 280–520               |
+| `WindowLeft` / `WindowTop`        | double | —         | 窗口位置                        |
+| `MinimalMode`                     | bool   | `false`   | 是否进入极简模式                    |
+| `MinimalShowChart`                | bool   | `true`    | 极简模式下是否显示趋势曲线               |
+| `Widgets`                         | string | `""`      | 组件布局（JSON 字符串数组，空 = 默认布局）   |
+| `DisabledPlugins`                 | string | `""`      | 已禁用的插件 id（`;` 分隔）           |
+| `MinimizeToTray`                  | bool   | `true`    | 关闭窗口时最小化到托盘                 |
+| `StartWithWindows`                | bool   | `false`   | 开机自启                        |
+| `AutoConnect`                     | bool   | `true`    | 启动自动连接上次设备                  |
+| `LastDeviceId` / `LastDeviceName` | string | —         | 上次连接设备                      |
+| `HighHeartRateThreshold`          | int    | `160`     | 心率上限提醒                      |
+| `LowHeartRateThreshold`           | int    | `50`      | 心率下限提醒                      |
+| `EnableNotifications`             | bool   | `true`    | 异常通知                        |
+| `EnableSoundAlert`                | bool   | `false`   | 声音提醒                        |
+| `DataRetentionDays`               | int    | `30`      | 数据保留天数                      |
+| `Language`                        | string | `zh-CN`   | 界面语言（预留给多语言）                |
 
 ---
 
 ## 数据与日志路径
 
-| 内容 | 路径 |
-|------|------|
-| 数据库 | `%LOCALAPPDATA%\HeartRateMonitor\heartrate.db` |
-| 运行日志 | `%LOCALAPPDATA%\HeartRateMonitor\logs\app-yyyyMMdd.log` |
-| 启动打点 | `%LOCALAPPDATA%\HeartRateMonitor\startup.log` |
-| 托盘图标缓存 | `%LOCALAPPDATA%\HeartRateMonitor\tray.ico` |
-| 外部插件 | `%LOCALAPPDATA%\HeartRateMonitor\plugins\<插件名>\` |
-| 插件数据 | `%LOCALAPPDATA%\HeartRateMonitor\plugin-data\<插件 id>\` |
+| 内容     | 路径                                                      |
+| ------ | ------------------------------------------------------- |
+| 数据库    | `%LOCALAPPDATA%\HeartRateMonitor\heartrate.db`          |
+| 运行日志   | `%LOCALAPPDATA%\HeartRateMonitor\logs\app-yyyyMMdd.log` |
+| 启动打点   | `%LOCALAPPDATA%\HeartRateMonitor\startup.log`           |
+| 托盘图标缓存 | `%LOCALAPPDATA%\HeartRateMonitor\tray.ico`              |
+| 外部插件   | `%LOCALAPPDATA%\HeartRateMonitor\plugins\<插件名>\`        |
+| 插件数据   | `%LOCALAPPDATA%\HeartRateMonitor\plugin-data\<插件 id>\`  |
 
 > 日志单文件超过 4MB 自动轮转为 `.bak`，并清理 7 天前日志。
 
@@ -508,13 +508,13 @@ HeartRate/
 
 ## 心率区间
 
-| 区间 | 心率范围 | 颜色 |
-|------|----------|------|
-| 放松 | < 100 BPM | `#6366F1` |
-| 燃脂 | 100 – 139 BPM | `#22C55E` |
-| 有氧 | 140 – 169 BPM | `#F59E0B` |
-| 无氧 | 170 – 199 BPM | `#F97316` |
-| 极限 | ≥ 200 BPM | `#EF4444` |
+| 区间  | 心率范围          | 颜色        |
+| --- | ------------- | --------- |
+| 放松  | < 100 BPM     | `#6366F1` |
+| 燃脂  | 100 – 139 BPM | `#22C55E` |
+| 有氧  | 140 – 169 BPM | `#F59E0B` |
+| 无氧  | 170 – 199 BPM | `#F97316` |
+| 极限  | ≥ 200 BPM     | `#EF4444` |
 
 区间定义集中在 `src/HeartRateMonitor.Core/Models/HeartRateZones.cs`（`Classify` / `IndexOf`），
 UI 颜色、组件区间条、区间标签全部来源于此，插件也可直接复用。
@@ -527,12 +527,12 @@ UI 颜色、组件区间条、区间标签全部来源于此，插件也可直�
 
 ### 服务与特征值
 
-| 服务/特征 | UUID | 说明 |
-|-----------|------|------|
-| Heart Rate Service | `0x180D` | 心率服务 |
-| Heart Rate Measurement | `0x2A37` | 心率测量值（Notify） |
-| Body Sensor Location | `0x2A38` | 传感器位置（可选读取） |
-| Heart Rate Control Point | `0x2A39` | 控制点（可选写入） |
+| 服务/特征                    | UUID     | 说明            |
+| ------------------------ | -------- | ------------- |
+| Heart Rate Service       | `0x180D` | 心率服务          |
+| Heart Rate Measurement   | `0x2A37` | 心率测量值（Notify） |
+| Body Sensor Location     | `0x2A38` | 传感器位置（可选读取）   |
+| Heart Rate Control Point | `0x2A39` | 控制点（可选写入）     |
 
 ### Heart Rate Measurement 数据格式
 
@@ -574,16 +574,16 @@ Byte 1-2:    Heart Rate Value (UINT16, 小端序)
 dotnet test tests/HeartRateMonitor.Tests/HeartRateMonitor.Tests.csproj
 ```
 
-| 测试类 | 覆盖内容 |
-|--------|----------|
-| `HeartRateParserTests` | UINT8/UINT16 解析、Sensor Contact、RR-Interval、异常输入 |
-| `HeartRateCalculatorTests` | 统计计算、区间分类、报告生成 |
-| `HeartRateServiceTests` | 心率更新、历史管理、事件触发 |
-| `DatabaseTests` | CRUD、查询、数据库初始化 |
-| `WidgetLayoutCodecTests` | 组件布局 JSON 解析/序列化、损坏数据回退、去重 |
-| `HeartRateZonesTests` | 五区间边界、`Classify`/`IndexOf` 一致性、颜色合法性 |
-| `SettingsServiceTests` | WAL 模式、`MinimalShowChart`/透明度 0 往返、并发保存不出现 `database is locked` |
-| `BleAdvertisementRulesTests` | 广播过滤规则、占位名升级为真实设备名、心率优先 + 信号排序 |
+| 测试类                          | 覆盖内容                                                            |
+| ---------------------------- | --------------------------------------------------------------- |
+| `HeartRateParserTests`       | UINT8/UINT16 解析、Sensor Contact、RR-Interval、异常输入                 |
+| `HeartRateCalculatorTests`   | 统计计算、区间分类、报告生成                                                  |
+| `HeartRateServiceTests`      | 心率更新、历史管理、事件触发                                                  |
+| `DatabaseTests`              | CRUD、查询、数据库初始化                                                  |
+| `WidgetLayoutCodecTests`     | 组件布局 JSON 解析/序列化、损坏数据回退、去重                                      |
+| `HeartRateZonesTests`        | 五区间边界、`Classify`/`IndexOf` 一致性、颜色合法性                            |
+| `SettingsServiceTests`       | WAL 模式、`MinimalShowChart`/透明度 0 往返、并发保存不出现 `database is locked` |
+| `BleAdvertisementRulesTests` | 广播过滤规则、占位名升级为真实设备名、心率优先 + 信号排序                                  |
 
 > 当前共 **79 个用例**，全部通过（受限沙箱内 `vstest`/testhost 会因进程权限失败，可用反射运行器执行）。
 
@@ -603,11 +603,11 @@ dotnet run --project tools/HeartRateMonitor.UiSmoke -- D:\shots # 输出到指�
 
 ## 发布与体积
 
-| 发布方式 | 体积（v2.1） | 对比 v1 |
-|----------|------|---------|
-| 框架依赖单文件（`--self-contained false`） | exe 28.07 MB（目录 29.77 MB，含 `e_sqlite3.dll`） | v1 ≈ 36.0 MB（**-22%**） |
-| 自包含单文件 + 压缩（`EnableCompressionInSingleFile=true`） | exe 75.33 MB（目录 ≈ 85.4 MB） | v1 ≈ 99 MB |
-| 自包含单文件（不压缩） | ≈ 181 MB | — |
+| 发布方式                                              | 体积（v2.1）                                    | 对比 v1                  |
+| ------------------------------------------------- | ------------------------------------------- | ---------------------- |
+| 框架依赖单文件（`--self-contained false`）                 | exe 28.07 MB（目录 29.77 MB，含 `e_sqlite3.dll`） | v1 ≈ 36.0 MB（**-22%**） |
+| 自包含单文件 + 压缩（`EnableCompressionInSingleFile=true`） | exe 75.33 MB（目录 ≈ 85.4 MB）                  | v1 ≈ 99 MB             |
+| 自包含单文件（不压缩）                                       | ≈ 181 MB                                    | —                      |
 
 打包 zip（`publish\`）：`HeartRate-v2.1.0-win-x64-framework-dependent.zip` ≈ 8.66 MB、`HeartRate-v2.1.0-win-x64-self-contained.zip` ≈ 74.45 MB。
 
@@ -621,12 +621,12 @@ dotnet run --project tools/HeartRateMonitor.UiSmoke -- D:\shots # 输出到指�
 
 扫描前会检测蓝牙可用性并给出具体原因：
 
-| 情况 | 界面表现 | 处理方式 |
-|------|----------|----------|
-| 蓝牙开关已关闭 | 「蓝牙未开启」+ 提示说明 | 打开系统蓝牙后重试（点提示条中的「打开蓝牙设置」） |
-| 没有 BLE 适配器 | 「未检测到可用的低功耗蓝牙（BLE）适配器…」 | 检查蓝牙硬件与驱动 |
-| 系统拒绝访问 | 「系统拒绝了蓝牙访问…」 | 检查 Windows 隐私/蓝牙权限 |
-| 扫描中蓝牙被关闭/占用 | 「扫描已中断」+ 原因 | 关闭占用程序或重开蓝牙 |
+| 情况          | 界面表现                    | 处理方式                      |
+| ----------- | ----------------------- | ------------------------- |
+| 蓝牙开关已关闭     | 「蓝牙未开启」+ 提示说明           | 打开系统蓝牙后重试（点提示条中的「打开蓝牙设置」） |
+| 没有 BLE 适配器  | 「未检测到可用的低功耗蓝牙（BLE）适配器…」 | 检查蓝牙硬件与驱动                 |
+| 系统拒绝访问      | 「系统拒绝了蓝牙访问…」            | 检查 Windows 隐私/蓝牙权限        |
+| 扫描中蓝牙被关闭/占用 | 「扫描已中断」+ 原因             | 关闭占用程序或重开蓝牙               |
 
 > 未打包桌面应用无法由程序自动打开蓝牙（`Radio.SetStateAsync` 返回 `DeniedByUser`），应用只负责检测与提示。
 
@@ -694,19 +694,19 @@ Get-Process HeartRateMonitor.App -ErrorAction SilentlyContinue | Stop-Process -F
 
 ## 文档索引
 
-| 文档 | 说明 |
-|------|------|
-| [docs/UI-REDESIGN.md](docs/UI-REDESIGN.md) | **v2 界面重构说明**：布局、主题系统、组件模型、交互规范 |
-| [docs/PLUGIN-DEVELOPMENT.md](docs/PLUGIN-DEVELOPMENT.md) | **插件开发指南**：契约、清单、生命周期、隔离、调试、发布 |
-| [docs/01_架构设计文档.md](docs/01_架构设计文档.md) | 分层架构与服务职责（v1 设计，v2 增补见文首） |
-| [docs/02_界面设计文档.md](docs/02_界面设计文档.md) | 界面设计（v1；v2 见 UI-REDESIGN） |
-| [docs/03_接口设计文档.md](docs/03_接口设计文档.md) | 接口契约 |
-| [docs/04_数据库设计文档.md](docs/04_数据库设计文档.md) | SQLite 表结构与仓储 |
-| [docs/05_BLE通信设计文档.md](docs/05_BLE通信设计文档.md) | BLE 连接与数据解析细节 |
-| [docs/06_测试设计文档.md](docs/06_测试设计文档.md) | 测试设计 |
-| [docs/07_前端样式规范.md](docs/07_前端样式规范.md) | 样式规范（v1） |
-| [docs/08_交互逻辑与前端表现规范.md](docs/08_交互逻辑与前端表现规范.md) | 交互规范（v1） |
-| [docs/心率监控软件需求文档.md](docs/心率监控软件需求文档.md) | 需求文档 |
+| 文档                                                       | 说明                              |
+| -------------------------------------------------------- | ------------------------------- |
+| [docs/UI-REDESIGN.md](docs/UI-REDESIGN.md)               | **v2 界面重构说明**：布局、主题系统、组件模型、交互规范 |
+| [docs/PLUGIN-DEVELOPMENT.md](docs/PLUGIN-DEVELOPMENT.md) | **插件开发指南**：契约、清单、生命周期、隔离、调试、发布  |
+| [docs/01_架构设计文档.md](docs/01_架构设计文档.md)                   | 分层架构与服务职责（v1 设计，v2 增补见文首）       |
+| [docs/02_界面设计文档.md](docs/02_界面设计文档.md)                   | 界面设计（v1；v2 见 UI-REDESIGN）       |
+| [docs/03_接口设计文档.md](docs/03_接口设计文档.md)                   | 接口契约                            |
+| [docs/04_数据库设计文档.md](docs/04_数据库设计文档.md)                 | SQLite 表结构与仓储                   |
+| [docs/05_BLE通信设计文档.md](docs/05_BLE通信设计文档.md)             | BLE 连接与数据解析细节                   |
+| [docs/06_测试设计文档.md](docs/06_测试设计文档.md)                   | 测试设计                            |
+| [docs/07_前端样式规范.md](docs/07_前端样式规范.md)                   | 样式规范（v1）                        |
+| [docs/08_交互逻辑与前端表现规范.md](docs/08_交互逻辑与前端表现规范.md)         | 交互规范（v1）                        |
+| [docs/心率监控软件需求文档.md](docs/心率监控软件需求文档.md)                 | 需求文档                            |
 
 ---
 
