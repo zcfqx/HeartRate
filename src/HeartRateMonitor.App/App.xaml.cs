@@ -9,6 +9,7 @@ using HeartRateMonitor.App.Infrastructure;
 using HeartRateMonitor.App.ViewModels;
 using HeartRateMonitor.App.Views;
 using HeartRateMonitor.Core.Interfaces;
+using HeartRateMonitor.Core.Models;
 using HeartRateMonitor.Data.Database;
 using HeartRateMonitor.Extensibility;
 using HeartRateMonitor.Data.Repositories;
@@ -314,11 +315,19 @@ public partial class App : Application
             // 读不到自身路径时退回按进程名匹配
         }
 
-        foreach (var process in Process.GetProcessesByName(current.ProcessName))
+        // 按应用名前缀而不是自身进程名匹配：单文件发布版的进程名带版本号
+        //（如 HeartRateMonitor-1.3.1-win-x64），与旧版本的 HeartRateMonitor.App 不同名，
+        // 否则发布版永远结束不了旧版本留下的僵尸进程。
+        foreach (var process in Process.GetProcesses())
         {
             using (process)
             {
                 if (process.Id == current.Id)
+                {
+                    continue;
+                }
+
+                if (!AppProcessNames.IsAppProcess(process.ProcessName))
                 {
                     continue;
                 }
@@ -616,12 +625,21 @@ public partial class App : Application
     {
         IsExiting = true;
 
+        // 退出清理（BLE 释放、数据库关闭）偶发卡死会把进程留成僵尸，
+        // 独占的单实例互斥量也随之泄漏，之后双击程序只会“转圈没反应”。
+        StartExitWatchdog();
+
         try
         {
             var settings = _serviceProvider?.GetService<ISettingsService>();
             if (settings is not null)
             {
-                Task.Run(() => settings.SaveAsync()).GetAwaiter().GetResult();
+                // 最多等 3 秒，避免设置库锁等待阻塞整个退出流程。
+                var save = Task.Run(() => settings.SaveAsync());
+                if (!save.Wait(TimeSpan.FromSeconds(3)))
+                {
+                    DebugLog("保存设置超时，继续退出");
+                }
             }
         }
         catch
@@ -630,6 +648,17 @@ public partial class App : Application
         }
 
         Current?.Shutdown();
+    }
+
+    /// <summary>退出超时看门狗：清理流程卡住时强制结束进程，避免残留僵尸实例。</summary>
+    private static void StartExitWatchdog()
+    {
+        Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+            DebugLog("退出看门狗触发：强制结束进程");
+            Environment.Exit(0);
+        });
     }
 
     /// <summary>
@@ -749,6 +778,7 @@ public partial class App : Application
     {
         DebugLog("OnExit called");
         IsExiting = true;
+        StartExitWatchdog();
 
         _stopActivationListener = true;
         try
@@ -771,6 +801,10 @@ public partial class App : Application
 
         _activateEvent?.Dispose();
         _activateAckEvent?.Dispose();
+
+        // 先把单实例互斥量还回去：后续托盘/BLE 清理即使变慢，新进程也能立刻启动，
+        // 不必等到整个退出流程结束。
+        ReleaseSingleInstanceMutex();
 
         try
         {
@@ -801,19 +835,27 @@ public partial class App : Application
 
         _serviceProvider?.Dispose();
 
-        if (_ownsMutex)
-        {
-            try
-            {
-                _mutex?.ReleaseMutex();
-            }
-            catch
-            {
-                // 未持有互斥量
-            }
-        }
-
+        ReleaseSingleInstanceMutex();
         _mutex?.Dispose();
         base.OnExit(e);
+    }
+
+    /// <summary>释放单实例互斥量（可重复调用）。</summary>
+    private void ReleaseSingleInstanceMutex()
+    {
+        if (!_ownsMutex)
+        {
+            return;
+        }
+
+        _ownsMutex = false;
+        try
+        {
+            _mutex?.ReleaseMutex();
+        }
+        catch
+        {
+            // 未持有互斥量
+        }
     }
 }

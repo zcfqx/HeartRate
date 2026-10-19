@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 # 华为手环心率实时监控 · Windows 桌面悬浮窗
 
@@ -135,14 +135,26 @@ dotnet test  src/HeartRateMonitor.sln -c Debug
 ### 发布
 
 ```bash
+# 推荐：一次性构建两份单文件资产（自动校验单 exe 可独立运行）
+pwsh scripts/publish.ps1 -Version 1.3.1
+# 产物：publish/release/HeartRate-1.3.1-win-x64-self-contained.exe（≈80 MB）
+#       publish/release/HeartRate-1.3.1-win-x64-framework-dependent.exe（≈28 MB）
+```
+
+手动发布时务必带上 `-p:IncludeNativeLibrariesForSelfExtract=true`：
+
+```bash
 # 框架依赖单文件（≈28 MB，需 .NET 8 Desktop Runtime）
 dotnet publish src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release -r win-x64 `
-  --self-contained false -p:PublishSingleFile=true -o publish/framework-dependent
+  --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/framework-dependent
 
-# 自包含单文件（≈75 MB，免运行时）
+# 自包含单文件（≈80 MB，免运行时）
 dotnet publish src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release -r win-x64 `
-  --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish/self-contained
+  --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true -o publish/self-contained
 ```
+
+> ⚠️ 不能省略 `IncludeNativeLibrariesForSelfExtract`：.NET 8 的单文件发布默认把 `wpfgfx_cor3.dll`、`PresentationNative_cor3.dll`、`e_sqlite3.dll` 等 native 依赖留在 exe 旁边。只分发 exe 时，程序会在创建窗口阶段抛 `DllNotFoundException` 并静默退出（表现为双击后只转圈、打不开）。
 
 界面冒烟检查与截图渲染：`dotnet run --project tools/HeartRateMonitor.UiSmoke`（运行前先退出正在运行的应用）。
 
