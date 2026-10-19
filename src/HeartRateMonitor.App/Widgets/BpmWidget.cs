@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using HeartRateMonitor.Core.Models;
 using HeartRateMonitor.Core.Events;
@@ -23,6 +24,17 @@ internal sealed class BpmWidget : WidgetViewBase
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         _heart = WidgetUi.Icon("heart", 26);
+        // 心形用红色渐变而非主题强调色：无论换什么主题，“红心”都应该是心跳的第一直觉。
+        _heart.Stroke = null;
+        _heart.StrokeThickness = 0;
+        _heart.SetResourceReference(Shape.FillProperty, "Brush.HeartGradient");
+        _heart.Effect = new DropShadowEffect
+        {
+            Color = Color.FromRgb(0xFF, 0x3B, 0x5C),
+            BlurRadius = 16,
+            ShadowDepth = 0,
+            Opacity = 0.55
+        };
         _heart.RenderTransform = _pulse;
         _heart.RenderTransformOrigin = new Point(0.5, 0.5);
         _heart.HorizontalAlignment = HorizontalAlignment.Right;
@@ -96,7 +108,7 @@ internal sealed class BpmWidget : WidgetViewBase
         _zoneLabel.Text = "等待心率数据";
         _zoneLabel.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
         _zoneChip.SetResourceReference(Border.BackgroundProperty, "Brush.AccentSoft");
-        _heart.SetResourceReference(Shape.StrokeProperty, "Brush.Accent");
+        _heart.SetResourceReference(Shape.FillProperty, "Brush.HeartGradient");
         StartPulse(64);
     }
 
@@ -105,10 +117,10 @@ internal sealed class BpmWidget : WidgetViewBase
         var zone = HeartRateZones.Classify(bpm);
         var color = ParseColor(zone.Color);
 
+        // 区间色只影响文字 chip，红心保持红色。
         _zoneLabel.Text = $"{zone.Name} · {zone.ShortName}";
         _zoneLabel.Foreground = new SolidColorBrush(color);
         _zoneChip.Background = new SolidColorBrush(Color.FromArgb(0x2E, color.R, color.G, color.B));
-        _heart.Stroke = new SolidColorBrush(color);
     }
 
     private void StartPulse(int bpm)

@@ -3,11 +3,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:core="clr-namespace:HeartRateMonitor.Core.Enums;assembly=HeartRateMonitor.Core"
         xmlns:controls="clr-namespace:HeartRateMonitor.App.Controls"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         Title="HeartRateMonitor"
         Width="320" SizeToContent="Height" MaxHeight="780" MinWidth="280"
         WindowStartupLocation="Manual"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="True" Topmost="True">
+
+    <Window.InputBindings>
+        <KeyBinding Key="M" Modifiers="Control" Command="{Binding ToggleMinimalModeCommand}"/>
+    </Window.InputBindings>
 
     <Border x:Name="Shell" Margin="14"
             Background="{DynamicResource Brush.Surface}"
@@ -32,7 +37,7 @@
 
                     <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="&#x2665;" FontFamily="Segoe UI Symbol" FontSize="17"
-                                   Foreground="{DynamicResource Brush.Accent}" VerticalAlignment="Center"/>
+                                   Foreground="{DynamicResource Brush.Heart}" VerticalAlignment="Center"/>
                         <TextBlock Text="心率监控" Style="{StaticResource Text.Label}" FontWeight="SemiBold"
                                    Margin="7,0,0,0" VerticalAlignment="Center"/>
                         <Ellipse Width="7" Height="7" Margin="10,0,5,0" VerticalAlignment="Center">
@@ -79,7 +84,7 @@
                             </Button.Resources>
                             <TextBlock Text="&#xE70F;"/>
                         </Button>
-                        <Button Style="{StaticResource Button.Icon}" ToolTip="极简模式" Margin="2,0,0,0"
+                        <Button Style="{StaticResource Button.Icon}" ToolTip="极简模式（Ctrl+M）" Margin="2,0,0,0"
                                 Command="{Binding ToggleMinimalModeCommand}">
                             <TextBlock Text="&#xE740;" Style="{StaticResource IconText}" FontSize="14"/>
                         </Button>
@@ -262,17 +267,34 @@
                 </Grid>
             </Grid>
 
-            <!-- ===== 极简模式：心跳图标 + 数字（可选曲线）===== -->
+            <!-- ===== 极简模式：一颗会跳动的红心 + 数字（可选曲线） =====
+                 使用场景：贴在桌面/视频角落，需要“余光一扫就知道心率”，
+                 所以只保留红心（用节拍表达心跳）与数字，背景可调到完全透明。 -->
             <Grid x:Name="MinimalView"
                   Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}}"
                   Background="Transparent"
+                  ToolTip="{Binding MinimalZoneName}"
                   MouseLeftButtonDown="OnMinimalMouseLeftButtonDown">
                 <Grid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="显示趋势曲线" IsCheckable="True"
                                   IsChecked="{Binding MinimalShowChart, Mode=OneWay}"
                                   Command="{Binding ToggleMinimalChartCommand}"/>
-                        <MenuItem Header="退出极简模式" Command="{Binding ToggleMinimalModeCommand}"/>
+                        <Separator/>
+                        <MenuItem Header="背景：完全透明" Command="{Binding SetOverlayOpacityCommand}">
+                            <MenuItem.CommandParameter><sys:Double>0</sys:Double></MenuItem.CommandParameter>
+                        </MenuItem>
+                        <MenuItem Header="背景：90% 不透明" Command="{Binding SetOverlayOpacityCommand}">
+                            <MenuItem.CommandParameter><sys:Double>0.9</sys:Double></MenuItem.CommandParameter>
+                        </MenuItem>
+                        <MenuItem Header="背景：80% 不透明" Command="{Binding SetOverlayOpacityCommand}">
+                            <MenuItem.CommandParameter><sys:Double>0.8</sys:Double></MenuItem.CommandParameter>
+                        </MenuItem>
+                        <MenuItem Header="背景：不透明（100%）" Command="{Binding SetOverlayOpacityCommand}">
+                            <MenuItem.CommandParameter><sys:Double>1</sys:Double></MenuItem.CommandParameter>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="回到看板" Command="{Binding ToggleMinimalModeCommand}"/>
                         <Separator/>
                         <MenuItem Header="设置" Command="{Binding OpenSettingsCommand}"/>
                         <MenuItem Header="最小化" Click="OnMinimizeClick"/>
@@ -280,32 +302,54 @@
                     </ContextMenu>
                 </Grid.ContextMenu>
 
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14,14,14,12">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <TextBlock x:Name="MinimalHeart" Text="&#x2665;" FontFamily="Segoe UI Symbol"
-                                   FontSize="26" Foreground="{DynamicResource Brush.Accent}"
-                                   VerticalAlignment="Center">
-                            <TextBlock.RenderTransform>
-                                <ScaleTransform x:Name="MinimalHeartScale" CenterX="13" CenterY="13"/>
-                            </TextBlock.RenderTransform>
-                        </TextBlock>
-                        <TextBlock Text="{Binding CurrentBpm}" Margin="8,0,4,0" VerticalAlignment="Center"
-                                   FontSize="44" FontWeight="Bold" Foreground="{DynamicResource Brush.Text}"/>
-                        <TextBlock Text="BPM" Style="{StaticResource Text.Caption}"
-                                   VerticalAlignment="Bottom" Margin="0,0,0,11"/>
-                    </StackPanel>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16,10,16,10">
+                    <!-- 红心 + 扩散光环：光环与心形一起随心跳脉冲 -->
+                    <Grid Width="112" Height="74" HorizontalAlignment="Center">
+                        <Ellipse x:Name="MinimalRipple" Width="52" Height="52"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Fill="{DynamicResource Brush.HeartSoft}" Opacity="0" IsHitTestVisible="False"
+                                 RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="MinimalRippleScale" />
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Ellipse x:Name="MinimalRippleOuter" Width="52" Height="52"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Stroke="{DynamicResource Brush.Heart}" StrokeThickness="1.5" Opacity="0"
+                                 IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="MinimalRippleOuterScale" />
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Path x:Name="MinimalHeart" Data="{StaticResource Geometry.Heart}"
+                              Width="50" Height="50" Stretch="Uniform"
+                              Fill="{DynamicResource Brush.HeartGradient}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              RenderTransformOrigin="0.5,0.5">
+                            <Path.RenderTransform>
+                                <ScaleTransform x:Name="MinimalHeartScale" />
+                            </Path.RenderTransform>
+                            <Path.Effect>
+                                <DropShadowEffect Color="#FF3B5C" BlurRadius="26" ShadowDepth="0" Opacity="0.8"/>
+                            </Path.Effect>
+                        </Path>
+                    </Grid>
 
-                    <Border HorizontalAlignment="Center" Margin="0,6,0,0" Padding="8,2" CornerRadius="6"
-                            Background="{DynamicResource Brush.AccentSoft}">
-                        <TextBlock Text="{Binding MinimalZoneName}" FontSize="11"
-                                   Foreground="{Binding MinimalZoneColor, Converter={StaticResource HexToBrush}}"/>
-                    </Border>
+                    <TextBlock x:Name="MinimalBpm" Text="{Binding CurrentBpmText}"
+                               FontSize="56" FontWeight="Bold"
+                               Foreground="{DynamicResource Brush.Text}"
+                               HorizontalAlignment="Center" Margin="0,-2,0,0">
+                        <TextBlock.Effect>
+                            <!-- 0% 透明时也能在任意桌面背景上看清数字 -->
+                            <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="0" Opacity="0.6"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
 
-                    <Grid Margin="0,10,0,0" Width="150" Height="40"
+                    <Grid Width="128" Height="34" Margin="0,2,0,0"
                           Visibility="{Binding MinimalShowChart, Converter={StaticResource BoolToVisibility}}">
                         <controls:Sparkline Points="{Binding SessionPoints}"
-                                            LineBrush="{DynamicResource Brush.Accent}"
-                                            FillBrush="{DynamicResource Brush.AccentSoft}"
+                                            LineBrush="{DynamicResource Brush.HeartGradient}"
+                                            FillBrush="Transparent"
                                             MinimumBpm="40" MaximumBpm="200"/>
                     </Grid>
                 </StackPanel>

@@ -66,6 +66,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _currentBpm;
 
+    /// <summary>极简模式的大号数字：未连接时显示“--”，避免出现 0 被误读。</summary>
+    public string CurrentBpmText => CurrentBpm > 0 ? CurrentBpm.ToString() : "--";
+
     [ObservableProperty]
     private string _minimalZoneName = "等待连接设备";
 
@@ -187,6 +190,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         MinimalShowChart = !MinimalShowChart;
         _settings.MinimalShowChart = MinimalShowChart;
+        _ = SaveSettingsAsync();
+    }
+
+    /// <summary>设置悬浮窗背景不透明度（0 = 完全透明，只保留红心与数字）。</summary>
+    [RelayCommand]
+    private void SetOverlayOpacity(double opacity)
+    {
+        _settings.OverlayOpacity = Math.Clamp(opacity, 0.0, 1.0);
+        _settings.NotifySettingsChanged();
         _ = SaveSettingsAsync();
     }
 
@@ -329,6 +341,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         var latest = _session.Latest;
         CurrentBpm = latest?.HeartRate ?? 0;
+        OnPropertyChanged(nameof(CurrentBpmText));
 
         if (latest is null)
         {

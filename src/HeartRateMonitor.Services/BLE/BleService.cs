@@ -49,6 +49,7 @@ public class BleService : IBleService, IDisposable
     public event EventHandler<HeartRateAlertEventArgs>? HeartRateAlert;
 #pragma warning restore CS0067
     public event EventHandler<BleDevice>? DeviceDiscovered;
+    public event EventHandler<BleDevice>? DeviceUpdated;
     public event EventHandler<BleScanFailedEventArgs>? ScanFailed;
 
     public BleService(IHeartRateParser parser, ILogger logger)
@@ -431,48 +432,69 @@ public class BleService : IBleService, IDisposable
             }
         }
 
-        // 记录所有广播用于调试
-        _logger.Debug(
-            $"收到广播: {(hasName ? localName : "(无名称)")} | 心率服务: {advertisesHeartRate} | 可连接: {isConnectable} | 信号: {args.RawSignalStrengthInDBm} dBm");
-
-        if (!isConnectable) return;
-        if (!hasName && !advertisesHeartRate) return;
+        if (!BleAdvertisementRules.ShouldDiscover(isConnectable, hasName, advertisesHeartRate))
+        {
+            // 耳机、鼠标等设备每秒广播数次，不收录也不逐条写日志，避免 60 秒扫描刷出上千行。
+            return;
+        }
 
         var deviceId = args.BluetoothAddress.ToString();
-        var device = new BleDevice
-        {
-            DeviceId = deviceId,
-            DeviceName = hasName ? localName! : "心率传感器",
-            SignalStrength = args.RawSignalStrengthInDBm,
-            IsConnectable = args.IsConnectable,
-            BluetoothAddress = args.BluetoothAddress
-        };
+        var rssi = args.RawSignalStrengthInDBm;
 
-        bool isNew = false;
+        BleDevice device;
+        var isNew = false;
+        var infoChanged = false;
+
         lock (_lock)
         {
-            if (!_discoveredDevices.ContainsKey(deviceId))
+            if (!_discoveredDevices.TryGetValue(deviceId, out var existing))
             {
+                device = new BleDevice
+                {
+                    DeviceId = deviceId,
+                    DeviceName = BleAdvertisementRules.ResolveName(null, localName, advertisesHeartRate),
+                    SignalStrength = rssi,
+                    IsConnectable = isConnectable,
+                    AdvertisesHeartRate = advertisesHeartRate,
+                    BluetoothAddress = args.BluetoothAddress
+                };
                 _discoveredDevices[deviceId] = device;
                 isNew = true;
-                _logger.Debug($"[NEW] 设备首次发现: {device.DeviceName} (ID: {deviceId})");
             }
             else
             {
-                _discoveredDevices[deviceId].SignalStrength = device.SignalStrength;
-                _logger.Debug($"[UPDATE] 设备已存在: {device.DeviceName} (ID: {deviceId})");
-            }
-        }
+                device = existing;
+                existing.SignalStrength = rssi;
+                existing.IsConnectable = true;
 
-        if (!isNew)
-        {
-            return;
+                // 同一设备可能先广播“无名称 + 心率服务”，随后才广播真实名称（如华为手环）。
+                if (BleAdvertisementRules.ShouldUpdateName(existing.DeviceName, localName))
+                {
+                    _logger.Info($"设备名称更新: {existing.DeviceName} → {localName!.Trim()} (ID: {deviceId})");
+                    existing.DeviceName = localName!.Trim();
+                    infoChanged = true;
+                }
+
+                if (advertisesHeartRate && !existing.AdvertisesHeartRate)
+                {
+                    existing.AdvertisesHeartRate = true;
+                    infoChanged = true;
+                }
+            }
         }
 
         try
         {
-            _logger.Info($"发现设备: {device.DeviceName} (信号: {device.SignalStrength} dBm) - 触发DeviceDiscovered事件");
-            DeviceDiscovered?.Invoke(this, device);
+            if (isNew)
+            {
+                _logger.Info(
+                    $"发现设备: {device.DeviceName} (信号: {device.SignalStrength} dBm, 心率服务: {device.AdvertisesHeartRate}) - 触发DeviceDiscovered事件");
+                DeviceDiscovered?.Invoke(this, device);
+            }
+            else if (infoChanged)
+            {
+                DeviceUpdated?.Invoke(this, device);
+            }
         }
         catch (Exception ex)
         {

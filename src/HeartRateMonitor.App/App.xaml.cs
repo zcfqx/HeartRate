@@ -453,6 +453,44 @@ public partial class App : Application
         };
         menu.Items.Add(minimalItem);
 
+        // 极简模式的曲线开关与背景不透明度，不必打开设置窗口就能随手调。
+        var chartItem = new MenuItem { Header = "显示趋势曲线", IsCheckable = true };
+        if (mainViewModel is not null)
+        {
+            chartItem.IsChecked = mainViewModel.MinimalShowChart;
+        }
+
+        chartItem.Click += (_, _) =>
+        {
+            var viewModel = _serviceProvider?.GetService<MainViewModel>();
+            if (viewModel is null)
+            {
+                return;
+            }
+
+            viewModel.ToggleMinimalChartCommand.Execute(null);
+            chartItem.IsChecked = viewModel.MinimalShowChart;
+        };
+        menu.Items.Add(chartItem);
+
+        var backgroundItem = new MenuItem { Header = "背景不透明度" };
+        foreach (var preset in new (string Label, double Value)[]
+                 {
+                     ("完全透明", 0.0), ("90% 不透明", 0.9), ("80% 不透明", 0.8), ("100% 不透明", 1.0)
+                 })
+        {
+            var presetItem = new MenuItem { Header = preset.Label };
+            var opacity = preset.Value;
+            presetItem.Click += (_, _) =>
+            {
+                var viewModel = _serviceProvider?.GetService<MainViewModel>();
+                viewModel?.SetOverlayOpacityCommand.Execute(opacity);
+            };
+            backgroundItem.Items.Add(presetItem);
+        }
+
+        menu.Items.Add(backgroundItem);
+
         if (_serviceProvider?.GetService<IPluginHost>() is { Commands.Count: > 0 } pluginHost)
         {
             menu.Items.Add(new Separator());

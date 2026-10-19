@@ -17,6 +17,8 @@
     <Color x:Key="Color.Warning">#FBBF24</Color>
     <Color x:Key="Color.Grid">#1E2942</Color>
     <Color x:Key="Color.Overlay">#050912</Color>
+    <Color x:Key="Color.Heart">#FF5773</Color>
+    <Color x:Key="Color.HeartSoft">#33FF5773</Color>
 
     <SolidColorBrush x:Key="Brush.Background" Color="{StaticResource Color.Background}" />
     <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
@@ -31,5 +33,14 @@
     <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
     <SolidColorBrush x:Key="Brush.Grid" Color="{StaticResource Color.Grid}" />
     <SolidColorBrush x:Key="Brush.Overlay" Color="{StaticResource Color.Overlay}" />
+    <SolidColorBrush x:Key="Brush.Heart" Color="{StaticResource Color.Heart}" />
+    <SolidColorBrush x:Key="Brush.HeartSoft" Color="{StaticResource Color.HeartSoft}" />
+
+    <!-- 心跳的红色渐变：从亮粉到深红，用于极简模式与 BPM 卡片的心形 -->
+    <LinearGradientBrush x:Key="Brush.HeartGradient" StartPoint="0.15,0" EndPoint="0.85,1">
+        <GradientStop Color="#FF8095" Offset="0" />
+        <GradientStop Color="#FF4D66" Offset="0.55" />
+        <GradientStop Color="#D91E3F" Offset="1" />
+    </LinearGradientBrush>
 
 </ResourceDictionary>

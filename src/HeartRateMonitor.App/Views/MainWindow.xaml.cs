@@ -55,8 +55,9 @@ public partial class MainWindow : Window
         {
             if (_viewModel.IsMinimalMode)
             {
-                MinWidth = 150;
-                MaxWidth = 320;
+                // 极简模式固定为紧凑宽度；同时收紧 Min/Max，避免窗口被拉伸或还原成看板宽度。
+                MinWidth = 176;
+                MaxWidth = 180;
                 MaxHeight = 320;
                 Width = 180;
             }
@@ -86,8 +87,13 @@ public partial class MainWindow : Window
         var surface = TryGetColor("Color.Surface", Color.FromRgb(0x12, 0x1A, 0x2E));
         var border = TryGetColor("Color.Border", Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
 
-        Shell.Background = new SolidColorBrush(Color.FromArgb(alpha, surface.R, surface.G, surface.B));
-        Shell.BorderBrush = new SolidColorBrush(Color.FromArgb((byte)(border.A * alpha / 255), border.R, border.G, border.B));
+        // 分层窗口（AllowsTransparency）的命中测试按 Alpha 进行：Alpha=0 的像素会把鼠标
+        // 透传给桌面，用户就抓不到窗口。所以 0% 时仍保留 1/255 的不可见底色，
+        // 视觉上完全透明，但窗体仍然可拖动、可右键呼出菜单。
+        var hitTestAlpha = alpha == 0 ? (byte)1 : alpha;
+
+        Shell.Background = new SolidColorBrush(Color.FromArgb(hitTestAlpha, surface.R, surface.G, surface.B));
+        Shell.BorderBrush = new SolidColorBrush(Color.FromArgb((byte)(border.A * hitTestAlpha / 255), border.R, border.G, border.B));
 
         // 完全透明时去掉阴影，否则会在桌面上留下一圈灰色雾。
         Shell.Effect = alpha == 0 ? null : TryFindResource("Shadow.Shell") as Effect;
@@ -134,27 +140,135 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>极简模式心形图标按当前心率跳动（周期 = 60 / BPM）。</summary>
+    /// <summary>当前心跳动画模式：-1 未启动、0 未连接时的呼吸动画、>0 正在按该 BPM 跳动。</summary>
+    private int _heartbeatMode = -1;
+
+    /// <summary>
+    /// 红心按当前心率做“咚—哒”双拍：心形放大回弹，同时向外扩散两圈光环。
+    /// 未连接（BPM 为 0）时改为缓慢呼吸动画，避免界面像“死掉了”。
+    /// </summary>
     private void UpdateMinimalHeart(int bpm)
     {
-        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        if (!_viewModel.IsMinimalMode)
+        {
+            StopHeartbeat();
+            return;
+        }
 
-        if (!_viewModel.IsMinimalMode || bpm <= 0)
+        if (bpm <= 0)
+        {
+            if (_heartbeatMode != 0)
+            {
+                StartIdleBreath();
+            }
+
+            return;
+        }
+
+        if (_heartbeatMode == bpm)
         {
             return;
         }
 
-        var duration = TimeSpan.FromSeconds(Math.Max(60.0 / bpm, 0.4));
-        var animation = new DoubleAnimation(1.0, 1.18, new Duration(duration))
+        StartHeartbeat(bpm);
+    }
+
+    private void StopHeartbeat()
+    {
+        if (_heartbeatMode == -1)
+        {
+            return;
+        }
+
+        _heartbeatMode = -1;
+        StopScale(MinimalHeartScale);
+        StopScale(MinimalRippleScale);
+        StopScale(MinimalRippleOuterScale);
+        MinimalRipple.BeginAnimation(UIElement.OpacityProperty, null);
+        MinimalRippleOuter.BeginAnimation(UIElement.OpacityProperty, null);
+        MinimalRipple.Opacity = 0;
+        MinimalRippleOuter.Opacity = 0;
+    }
+
+    private static void StopScale(ScaleTransform transform)
+    {
+        transform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        transform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        transform.ScaleX = 1;
+        transform.ScaleY = 1;
+    }
+
+    private void StartIdleBreath()
+    {
+        StopHeartbeat();
+        _heartbeatMode = 0;
+
+        var breath = new DoubleAnimation(1.0, 1.06, TimeSpan.FromSeconds(1.6))
         {
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
         };
 
-        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
-        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
+        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleXProperty, breath);
+        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleYProperty, breath.Clone());
+    }
+
+    private void StartHeartbeat(int bpm)
+    {
+        StopHeartbeat();
+        _heartbeatMode = bpm;
+
+        var beat = TimeSpan.FromSeconds(Math.Clamp(60.0 / bpm, 0.28, 2.0));
+
+        // 1.0 → 1.20（第一拍）→ 0.97 → 1.10（第二拍）→ 回到 1.0
+        var pulse = new DoubleAnimationUsingKeyFrames
+        {
+            Duration = beat,
+            RepeatBehavior = RepeatBehavior.Forever
+        };
+        pulse.KeyFrames.Add(new LinearDoubleKeyFrame(1.00, KeyTime.FromPercent(0.00)));
+        pulse.KeyFrames.Add(new LinearDoubleKeyFrame(1.20, KeyTime.FromPercent(0.10)));
+        pulse.KeyFrames.Add(new LinearDoubleKeyFrame(0.97, KeyTime.FromPercent(0.22)));
+        pulse.KeyFrames.Add(new LinearDoubleKeyFrame(1.10, KeyTime.FromPercent(0.32)));
+        pulse.KeyFrames.Add(new EasingDoubleKeyFrame(1.00, KeyTime.FromPercent(0.62),
+            new SineEase { EasingMode = EasingMode.EaseOut }));
+        pulse.KeyFrames.Add(new LinearDoubleKeyFrame(1.00, KeyTime.FromPercent(1.00)));
+
+        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleXProperty, pulse);
+        MinimalHeartScale.BeginAnimation(ScaleTransform.ScaleYProperty, pulse.Clone());
+
+        // 两圈光环：紧随心形扩散并淡出，第二圈晚半个节拍，形成余韵。
+        AnimateRipple(MinimalRipple, MinimalRippleScale, beat, TimeSpan.Zero, 0.55, 1.9);
+        AnimateRipple(MinimalRippleOuter, MinimalRippleOuterScale, beat,
+            TimeSpan.FromSeconds(beat.TotalSeconds * 0.5), 0.35, 2.2);
+    }
+
+    private static void AnimateRipple(UIElement ring, ScaleTransform scale, TimeSpan beat,
+        TimeSpan delay, double fromOpacity, double toScale)
+    {
+        StopScale(scale);
+        ring.BeginAnimation(UIElement.OpacityProperty, null);
+
+        var duration = TimeSpan.FromSeconds(Math.Max(beat.TotalSeconds * 0.85, 0.35));
+        var ease = new SineEase { EasingMode = EasingMode.EaseOut };
+
+        var grow = new DoubleAnimation(0.85, toScale, duration)
+        {
+            BeginTime = delay,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = ease
+        };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow.Clone());
+
+        var fade = new DoubleAnimation(fromOpacity, 0, duration)
+        {
+            BeginTime = delay,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = ease
+        };
+        ring.BeginAnimation(UIElement.OpacityProperty, fade);
     }
 
     // === 顶栏 ===

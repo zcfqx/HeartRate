@@ -3,8 +3,11 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using System.Windows.Threading;
+using Path = System.IO.Path;
 using HeartRateMonitor.App.ViewModels;
 using HeartRateMonitor.App.Views;
 using HeartRateMonitor.App.Views.Settings;
@@ -278,6 +281,16 @@ internal static class Program
         SetLayout(host, viewModel, ["bpm", "chart", "device"]);
         Pump(window.Dispatcher);
 
+        // 用户可能把应用留在了极简模式或全透明状态；渲染前统一回到看板视图与 92% 不透明度。
+        settings.OverlayOpacity = 0.92;
+        settings.NotifySettingsChanged();
+        if (viewModel.IsMinimalMode)
+        {
+            viewModel.ToggleMinimalModeCommand.Execute(null);
+        }
+
+        Pump(window.Dispatcher);
+
         Render(content, 320, 620, "main-dark.png");
 
         viewModel.IsAddPanelOpen = true;
@@ -312,7 +325,11 @@ internal static class Program
 
         settings.OverlayOpacity = 0.92;
         settings.NotifySettingsChanged();
-        viewModel.ToggleMinimalModeCommand.Execute(null);
+        if (!viewModel.IsMinimalMode)
+        {
+            viewModel.ToggleMinimalModeCommand.Execute(null);
+        }
+
         Pump(window.Dispatcher);
         content.UpdateLayout();
         Pump(window.Dispatcher);
@@ -323,6 +340,42 @@ internal static class Program
                 $"极简模式视图状态异常：Normal={normalView.Visibility}, Minimal={minimalView.Visibility}");
         }
 
+        // 极简模式视觉规范：红色渐变实心心形 + 双层心跳光环，只显示图标与数字。
+        var heart = (System.Windows.Shapes.Path)minimalView.FindName("MinimalHeart");
+        if (heart.Fill is not LinearGradientBrush heartFill)
+        {
+            throw new InvalidOperationException("极简模式心跳图标应为红色渐变填充");
+        }
+
+        if (heartFill.GradientStops.Count < 2 ||
+            heartFill.GradientStops.All(s => s.Color.R < 180 || s.Color.R <= s.Color.B))
+        {
+            throw new InvalidOperationException("极简模式心跳图标渐变不是红色系");
+        }
+
+        if (heart.Effect is not DropShadowEffect glow || glow.Color.R < 180 || glow.BlurRadius < 10)
+        {
+            throw new InvalidOperationException("极简模式心跳图标缺少红色发光渲染效果");
+        }
+
+        var ripple = (Ellipse)minimalView.FindName("MinimalRipple");
+        var rippleOuter = (Ellipse)minimalView.FindName("MinimalRippleOuter");
+        if (ripple.Opacity > 0.001 || rippleOuter.Opacity > 0.001)
+        {
+            throw new InvalidOperationException("极简模式光环初始应完全隐藏，仅由心跳节拍动画驱动");
+        }
+
+        var bpmText = (TextBlock)minimalView.FindName("MinimalBpm");
+        if (bpmText.Text != "--")
+        {
+            throw new InvalidOperationException($"未连接时心率数字应显示 --，实际为 {bpmText.Text}");
+        }
+
+        if (FindText(minimalView, "BPM") is not null)
+        {
+            throw new InvalidOperationException("极简模式只显示心跳图标与数字，不应出现 BPM 单位文字");
+        }
+
         Render(content, 180, 300, "main-minimal.png");
 
         viewModel.MinimalShowChart = false;
@@ -331,14 +384,19 @@ internal static class Program
         viewModel.MinimalShowChart = true;
         Pump(window.Dispatcher);
 
-        // 0% 透明：Shell 背景 Alpha 必须为 0，同时文字仍然清晰可见。
+        // 0% 透明：Shell 背景 Alpha 必须为 0（命中测试用 1/255 保留拖动与右键），同时文字清晰可见。
         settings.OverlayOpacity = 0;
         settings.NotifySettingsChanged();
         Pump(window.Dispatcher);
         var background = shell.Background as SolidColorBrush;
-        if (background is null || background.Color.A != 0)
+        if (background is null || background.Color.A > 1)
         {
-            throw new InvalidOperationException($"不透明度 0 时背景 Alpha 应为 0，实际 {background?.Color.A.ToString() ?? "null"}");
+            throw new InvalidOperationException($"不透明度 0 时背景 Alpha 应接近 0，实际 {background?.Color.A.ToString() ?? "null"}");
+        }
+
+        if (shell.Effect is not null)
+        {
+            throw new InvalidOperationException("背景完全透明时不应保留窗口阴影效果");
         }
 
         var transparent = RenderBitmap(content, 180, 300);
@@ -354,7 +412,11 @@ internal static class Program
         settings.OverlayOpacity = 0.92;
         settings.NotifySettingsChanged();
         Pump(window.Dispatcher);
-        viewModel.ToggleMinimalModeCommand.Execute(null);
+        if (viewModel.IsMinimalMode)
+        {
+            viewModel.ToggleMinimalModeCommand.Execute(null);
+        }
+
         Pump(window.Dispatcher);
     }
 
@@ -389,6 +451,26 @@ internal static class Program
         Pump(window.Dispatcher);
         Task.Run(() => settings.SaveAsync()).GetAwaiter().GetResult();
         Console.WriteLine("  主题、透明度、极简模式与看板布局已恢复");
+    }
+
+    private static TextBlock? FindText(DependencyObject root, string text)
+    {
+        if (root is TextBlock block && block.Text == text)
+        {
+            return block;
+        }
+
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var found = FindText(VisualTreeHelper.GetChild(root, i), text);
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static void SetLayout(IPluginHost host, MainViewModel viewModel, IReadOnlyList<string> ids)

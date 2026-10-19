@@ -7,12 +7,14 @@
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows)]()
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](#许可证)
-[![Tests](https://img.shields.io/badge/Tests-62%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-79%20passed-brightgreen.svg)]()
 [![C#](https://img.shields.io/badge/C%23-12-239120?logo=csharp)]()
 
 通过蓝牙低功耗（BLE）协议连接华为手环，在无边框悬浮窗中实时显示心率数值、趋势曲线与统计信息。
 **v2 已重构为轻量、可插拔的组件化看板**：界面重新设计，依赖大幅裁剪，功能全部以插件形式增删。
-**v2.1 修复**：深色模式文字过暗、扫描列表拿不到设备、设置保存偶发失败；新增极简模式（心跳图标 + 数字，可选曲线）与可调至 **0%（完全透明）** 的背景。
+**v2.2 优化**：修复扫描列表不显示设备的根因（设备行永远被隐藏）、新增「仅心率设备」筛选与按心率优先 + 信号强度排序、
+设备名自动升级（匿名广播「心率传感器」→ 真实名称）；极简模式重新设计为**红色渐变心跳图标 + 发光 + 心跳节拍光环**，
+只保留图标与数字，背景右键可一键切到 **0%（完全透明）** 且仍可拖动/右键，新增 `Ctrl+M` 快捷切换。
 
 [功能特性](#功能特性) | [界面预览](#界面预览) | [快速开始](#快速开始) | [插件机制](#插件机制) | [项目架构](#项目架构) | [文档索引](#文档索引)
 
@@ -46,7 +48,7 @@
 
 ### 核心功能
 
-- **BLE 设备扫描与连接** — 自动扫描周围低功耗蓝牙心率设备，设备列表内嵌在悬浮窗组件中
+- **BLE 设备扫描与连接** — 扫描周围 BLE 设备，默认「仅心率设备」过滤耳机/触控笔等噪音，按「心率设备优先 + 信号强度」排序；设备列表内嵌在悬浮窗组件中
 - **实时心率接收** — 基于标准蓝牙心率服务（GATT `0x180D` / `0x2A37`）接收并解析心率数据
 - **轻量趋势曲线** — 自绘 `Sparkline` 控件（平滑贝塞尔曲线 + 半透明面积），不再依赖 SkiaSharp/LiveCharts
 - **心率区间识别** — 五区间自动分类（放松 / 燃脂 / 有氧 / 无氧 / 极限），颜色映射
@@ -57,8 +59,8 @@
 
 - **无边框圆角悬浮窗** — 置顶显示，可拖动、可调整宽度、可调不透明度
 - **组件化看板** — 功能以「组件卡片」排列，随时从组件库增删、进入编辑模式移除
-- **极简模式** — 只显示心跳图标 + 大号数字，可右键开关趋势曲线；双击或再次点击极简按钮返回看板
-- **背景完全透明** — 不透明度滑杆可调到 0%，只保留文字与图形，适合叠加在桌面或视频上
+- **极简模式** — 只显示红色心跳图标（渐变填充 + 发光 + 按心率节拍跳动）与大号数字，可右键开关趋势曲线；`Ctrl+M`、顶栏按钮、托盘菜单、设置页均可切换
+- **背景完全透明** — 不透明度可调到 0%（只保留心跳与数字），0% 时窗口仍可拖动、右键；极简模式右键菜单提供 100% / 90% / 80% / 0% 快捷预设
 - **深色 / 浅色主题** — 运行时即时切换，8 种强调色可选，无需重启（v2.1 修正深色主题下部分文字继承黑色的问题）
 - **设置中心** — 左侧导航式设置窗：外观 / 连接 / 提醒 / 数据 / 插件贡献页 / 功能插件 / 关于
 - **系统托盘** — 自研 Win32 托盘图标（P/Invoke），右键菜单含插件命令，关闭窗口默认最小化到托盘
@@ -95,9 +97,14 @@
 | 极简模式（带曲线） | 极简模式（无曲线） | 极简模式（背景 0% 透明） |
 |:---:|:---:|:---:|
 | ![极简-曲线](docs/screenshots/main-minimal.png) | ![极简-无曲线](docs/screenshots/main-minimal-nochart.png) | ![极简-透明](docs/screenshots/main-minimal-transparent.png) |
-| 心跳图标 + BPM + 区间 | 右键菜单「显示趋势曲线」可关 | 背景完全透明，只留文字与图形 |
+| 红色心跳图标 + 心率数字（离线渲染时为 `--`） | 右键菜单「显示趋势曲线」可关 | 背景完全透明，只留心跳与数字 |
 
-> 截图由仓库内 `tools/HeartRateMonitor.UiSmoke` 离线渲染生成（`RenderTargetBitmap`，非系统截图）：`dotnet run --project tools/HeartRateMonitor.UiSmoke`。运行前请先退出正在运行的应用（单实例）。更多设计说明见 [docs/UI-REDESIGN.md](docs/UI-REDESIGN.md)。
+| 实机连接（看板） | 极简模式（实机连接） |
+|:---:|:---:|
+| ![实机连接](docs/screenshots/main-connected.png) | ![极简-实机](docs/screenshots/main-minimal-connected.png) |
+| 连接 HUAWEI Band HR-8F4：65 BPM、区间、趋势、会话时长 | 红色心跳 + 大号数字 + 红色趋势曲线 |
+
+> 前 8 张由仓库内 `tools/HeartRateMonitor.UiSmoke` 离线渲染生成（`RenderTargetBitmap`，非系统截图）：`dotnet run --project tools/HeartRateMonitor.UiSmoke`。运行前请先退出正在运行的应用（单实例）。`main-connected.png` / `main-minimal-connected.png` 为连接真实手环时的运行时截图。更多设计说明见 [docs/UI-REDESIGN.md](docs/UI-REDESIGN.md)。
 
 ---
 
@@ -341,7 +348,7 @@ dotnet build samples/Breathing/Breathing.csproj -c Debug
 | 日志 | 自研 `FileLogger` | 按天滚动、4MB 轮转、保留 7 天 |
 | 托盘 | 自研 `TrayIcon` | `Shell_NotifyIcon` P/Invoke |
 | 依赖注入 | Microsoft.Extensions.DI 8.0.1 | 内置 DI 容器 |
-| 测试 | MSTest 3.1.1 | 62 个单元测试 |
+| 测试 | MSTest 3.1.1 | 79 个单元测试 |
 
 ### 轻量化：依赖裁剪对比
 
@@ -447,7 +454,7 @@ HeartRate/
 │       ├── Database/ Entities/ Repositories/
 │
 ├── samples/Breathing/                      # 外部插件示例（呼吸引导）
-├── tests/HeartRateMonitor.Tests/           # 62 个单元测试（7 个测试类）
+├── tests/HeartRateMonitor.Tests/           # 79 个单元测试（8 个测试类）
 ├── tools/HeartRateMonitor.UiSmoke/         # 界面冒烟检查 + 截图渲染（docs/screenshots）
 ├── scripts/                                # 图标生成 / 快捷方式安装
 ├── publish/                                # 发布产物（未跟踪）
@@ -576,8 +583,9 @@ dotnet test tests/HeartRateMonitor.Tests/HeartRateMonitor.Tests.csproj
 | `WidgetLayoutCodecTests` | 组件布局 JSON 解析/序列化、损坏数据回退、去重 |
 | `HeartRateZonesTests` | 五区间边界、`Classify`/`IndexOf` 一致性、颜色合法性 |
 | `SettingsServiceTests` | WAL 模式、`MinimalShowChart`/透明度 0 往返、并发保存不出现 `database is locked` |
+| `BleAdvertisementRulesTests` | 广播过滤规则、占位名升级为真实设备名、心率优先 + 信号排序 |
 
-> 当前共 **62 个用例**，全部通过（受限沙箱内 `vstest`/testhost 会因进程权限失败，可用反射运行器执行）。
+> 当前共 **79 个用例**，全部通过（受限沙箱内 `vstest`/testhost 会因进程权限失败，可用反射运行器执行）。
 
 ### 界面冒烟与截图
 
@@ -622,7 +630,16 @@ dotnet run --project tools/HeartRateMonitor.UiSmoke -- D:\shots # 输出到指�
 
 > 未打包桌面应用无法由程序自动打开蓝牙（`Radio.SetStateAsync` 返回 `DeniedByUser`），应用只负责检测与提示。
 
-> **v2.1 扫描规则**：除「有名称的可连接设备」外，只要广播里包含标准心率服务 `0x180D`（即使设备没有名字）也会被列出，名称显示为「心率传感器」，避免手环匿名广播时列表为空。
+> **v2.1 扫描规则**：除「有名称的可连接设备」外，只要广播里包含标准心率服务 `0x180D`（即使设备没有名字）也会被列出，名称显示为「心率传感器」，避免手环匿名广播时列表为空。同一设备随后广播出真实名称时会自动升级显示名。
+
+#### 扫描得到 0 台设备
+
+若日志（`%LOCALAPPDATA%\HeartRateMonitor\logs\app-yyyyMMdd.log`）里出现「收到广播」但列表为空，按下面顺序排查：
+
+1. 场景里确实没有心率设备在广播：手环/手表通常需要进入「运动模式」或开启「心率广播」后才会广播 `0x180D`，普通待机状态只广播通用服务；
+2. 只看得到耳机等非心率设备：默认开启「仅心率设备」筛选会隐藏它们，点击设备卡头部的筛选按钮可显示全部周边设备；
+3. 设备广播了心率服务但名称未知：列表会显示为「心率传感器」，直接点击即可尝试连接；
+4. 以上都排除后查看日志中的 `发现设备:` / `设备名称更新:` 行，确认 `BluetoothLEDevice` 是否收到目标设备的广播。
 
 ### 设置保存失败怎么办
 

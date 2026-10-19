@@ -17,6 +17,9 @@
             <SolidColorBrush x:Key="Brush.AccentDeep" Color="#FF4F46E5"/>
             <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFFFF"/>
 
+            <!-- 心形几何：16×16 闭合路径，可直接填充（与 AppIcons 的 heart 图标一致） -->
+            <Geometry x:Key="Geometry.Heart">M8,13.6 C8,13.6 1.8,9.6 1.8,5.9 A3.2,3.2 0 0 1 8,4.2 A3.2,3.2 0 0 1 14.2,5.9 C14.2,9.6 8,13.6 8,13.6 Z</Geometry>
+
             <!-- 转换器 -->
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
             <conv:NullToVisibilityConverter x:Key="NullToVisibility"/>

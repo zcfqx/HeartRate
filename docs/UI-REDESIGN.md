@@ -48,9 +48,14 @@ v2 的重构目标是：**看板化（widget dashboard）+ 插件化 + 轻量自
 |:---:|:---:|:---:|
 | ![极简-曲线](screenshots/main-minimal.png) | ![极简-无曲线](screenshots/main-minimal-nochart.png) | ![极简-透明](screenshots/main-minimal-transparent.png) |
 
+| 实机连接（看板） | 极简模式（实机连接） |
+|:---:|:---:|
+| ![实机连接](screenshots/main-connected.png) | ![极简-实机](screenshots/main-minimal-connected.png) |
+
 > 截图由仓库内 `tools/HeartRateMonitor.UiSmoke` 渲染（`RenderTargetBitmap`，非系统截图），与真实运行效果一致。
 > 重新生成：先退出正在运行的应用（单实例），再执行 `dotnet run --project tools/HeartRateMonitor.UiSmoke`；
 > 该命令同时执行主题、插件启停、组件增删、极简模式与 0% 透明等界面冒烟检查。
+> `main-connected.png` / `main-minimal-connected.png` 为连接真实手环（HUAWEI Band HR-8F4）时的运行时截图。
 
 ---
 
@@ -76,6 +81,9 @@ v2 的重构目标是：**看板化（widget dashboard）+ 插件化 + 轻量自
 | `DangerSoft` | `#33F87171` | `#22DC2626` | 危险按钮 hover 底 |
 | `Grid` | `#1E2942` | `#E5EAF5` | 分隔线/图表网格 |
 | `Overlay` | `#050912` | `#EAEEF8` | 抽屉/浮层遮罩 |
+| `Color.Heart` / `Brush.Heart` | `#FF5773` | `#E11D48` | 心跳图标、极简模式光环描边（固定语义色，不随强调色变化） |
+| `Color.HeartSoft` / `Brush.HeartSoft` | `#33FF5773` | `#22E11D48` | 心跳光环填充 |
+| `Brush.HeartGradient` | `#FF8095 → #FF4D66 → #D91E3F` | `#FF6B81 → #E11D48 → #BE123C` | 心跳图标渐变填充、极简曲线描边 |
 
 强调色不是固定键，而是由 `ThemeManager` 在运行时**计算并注入**：
 
@@ -149,7 +157,7 @@ v2 的重构目标是：**看板化（widget dashboard）+ 插件化 + 轻量自
 | 状态点 + 文案 | 由 `MainViewModel.ConnectionState` 决定：已连接=绿、扫描/连接/重连中=黄、未连接=灰；文案显示设备名或状态 |
 | ＋（E710） | 打开/关闭「组件库」浮层 |
 | ✎（E70F） | 切换编辑模式（激活时图标变强调色，卡片显示移除按钮） |
-| ⤢（E740） | 切换极简模式（v2.1） |
+| ⤢（E740） | 切换极简模式（等价于 `Ctrl+M`、托盘菜单「极简模式」、设置 → 外观开关） |
 | ⚙（E713） | 打开设置中心（`IDialogService.ShowSettingsDialog()`） |
 | —（E921） | 最小化（不退出；由系统任务栏接管） |
 | ✕（E8BB） | 关闭；若 `MinimizeToTray=true` 则隐藏到托盘，否则退出应用 |
@@ -171,6 +179,29 @@ v2 的重构目标是：**看板化（widget dashboard）+ 插件化 + 轻量自
 左侧：「本次会话 hh:mm:ss」+ 当前设备名；右侧「＋ 添加组件」快捷入口。
 时长来自 `IHeartRateSession.Duration`，由 1s `DispatcherTimer` 刷新；未开始显示 `00:00`。
 
+### 设备连接组件（v2.2 重做）
+
+```
+┌──────────────────────────────────┐
+│ 设备连接                   设备连接 │
+│ ● 扫描中…                  [停止] │
+│ 点击下方设备即可连接               │
+│ ┌──────────────────────────────┐ │
+│ │ 已发现 1 台 · 搜索中 [仅心率设备] │ │
+│ │ ♥ HUAWEI Band HR-8F4  -64 dBm │ │
+│ └──────────────────────────────┘ │
+└──────────────────────────────────┘
+```
+
+- 扫描结果按 `BleAdvertisementRules.SortForDisplay` 排序：心率设备优先 → 信号强度降序 → 名称；
+- 默认开启「仅心率设备」筛选（隐藏耳机、触控笔等只广播名称的设备），关闭后显示全部周边设备；
+- 设备名会随后续广播原地升级：匿名心率广播先显示「心率传感器」，拿到真实名称后经
+  `IBleService.DeviceUpdated` 更新，不再新建设备行；
+- 空态分三种：搜索中提示、未发现设备（提示确认手环处于心率广播模式）、被筛选隐藏的数量提示；
+- 列表限高 172px 内部滚动；连接成功后自动收起，状态点转绿并显示设备名；
+- v2.2 修复：此前 `_deviceList` 构造时被设为 `Collapsed` 且再未显示，导致扫描到了设备也「看不到」——这是
+  「扫描不到设备」的真正原因，与 BLE 广播链路无关（日志可正常看到 `发现设备:`）。
+
 ### 内置组件（4 个内置插件共 7 个组件）
 
 | 组件 Id | 标题 | 插件 | 默认显示 | 内容 |
@@ -178,7 +209,7 @@ v2 的重构目标是：**看板化（widget dashboard）+ 插件化 + 轻量自
 | `bpm` | 心率 | core | ✅ | 大号 BPM 数值、单位、心跳脉冲动画、当前区间 chip |
 | `chart` | 心率趋势 | core | ✅ | `Sparkline` 240 点折线 + 面积填充、当前值、自动量程 |
 | `zone` | 心率区间 | core | — | 五段区间横条（当前区间高亮） |
-| `device` | 设备连接 | device | ✅ | 状态点、扫描/停止/断开、发现设备列表（内嵌，替代模态选择器） |
+| `device` | 设备连接 | device | ✅ | 状态点、扫描/停止/断开；发现设备列表内嵌（默认「仅心率设备」筛选、心率优先 + 信号排序、名称自动升级），扫描中的计数与空态提示 |
 | `stats` | 会话统计 | session | — | 平均/最高/最低心率、当前区间 |
 | `session` | 本次会话 | session | — | 时长、卡路里、采样数、「开始新会话」 |
 | `clock` | 时钟 | extras | — | HH:mm + 日期 |
@@ -187,13 +218,15 @@ v2 的重构目标是：**看板化（widget dashboard）+ 插件化 + 轻量自
 
 ### 交互细节
 
-- **心跳动画**：BPM 卡片心形图标按 `clamp(60 / bpm, 0.4, 1.6)` 秒半周期缩放（`ScaleTransform`，`DoubleAnimation`
-  自动反转）；暂停/无数据时停止。
+- **心跳动画**：BPM 卡片心形图标改为红色实心（`Brush.HeartGradient` + 红色辉光），
+  按 `clamp(60 / bpm, 0.4, 1.6)` 秒半周期缩放（`ScaleTransform`，`DoubleAnimation` 自动反转）；暂停/无数据时停止。
+  区间颜色只用于区间 chip，不再给心跳图标染色——红色是心率的固定语义色。
 - **脉冲与数据节流**：`HeartRateSession` 在 UI 线程 `Post` 事件（构造时捕获 `SynchronizationContext`），
   避免每个组件各自 `Dispatcher.Invoke`；采样入环形缓冲（240 点），统计增量更新。
 - **窗口行为**：位置保存到 `WindowLeft/WindowTop`；宽度来自设置 `WindowWidth`（Clamp 280–520）；
   背景不透明度来自 `OverlayOpacity`（**0.0–1.0**，v2.1 起作用于外壳 Border 背景画刷的 alpha，而不是 `Opacity`），
-  调到 0 时背景完全透明且自动去掉阴影；修改后即时生效（订阅 `ISettingsService.SettingsChanged`）。
+  调到 0 时背景完全透明且自动去掉阴影、命中测试 alpha 保留 1/255（否则分层窗口会整窗鼠标穿透）；
+  修改后即时生效（订阅 `ISettingsService.SettingsChanged`）。
 - **关闭**：`MinimizeToTray=true` → `Hide()` + 托盘图标；`false` → `App.ExitApp()`。
 - **拖拽**：仅顶栏（极简模式下整窗）可拖动；拖动结束保存位置（设置窗关闭/应用退出时统一 `SaveAsync` 落库）。
 - **单实例（v2.1）**：命名 Mutex `Local\HeartRateMonitor.SingleInstance` + 两个命名事件
@@ -202,30 +235,41 @@ v2 的重构目标是：**看板化（widget dashboard）+ 插件化 + 轻量自
   自动 `Kill` 同路径（必要时同名）进程、重建 Mutex 后继续启动；只有接管失败才弹「已经在运行」。
   启动日志每行带进程号，便于区分多实例。
 
-### 极简模式（v2.1）
+### 极简模式（v2.1 重新设计）
 
 ```
-┌───────────────────┐
-│  ♥   72   BPM     │  ← 心跳图标（按 BPM 脉冲）+ 大号数字 + 单位
-│   [燃脂]          │  ← 当前区间 chip（颜色随区间）
-│  ╱╲╱╲╱╲╱╲╱╲╱     │  ← 可选：趋势曲线（MinimalShowChart）
-└───────────────────┘
-   180×约 160，无边框、置顶、可拖动
+        ╭─────╮
+        │  ♥  │   ← 红色渐变实心心形：外发光 + 双层光环 + 按心率节拍缩放
+        ╰─────╯
+          72      ← 大号数字（未连接显示 --），带黑色投影，0% 透明时也可读
+        ╱╲╱╲╱╲   ← 可选：趋势曲线（MinimalShowChart，红色描边）
+   180×约 233，无边框、置顶、可拖动，背景可完全透明
 ```
+
+设计意图：极简模式只回答“现在心率多少”。心跳符号用红色而非主题强调色（心率/生命的直觉色），
+并用渲染强化“正在跳动”——三层叠加：渐变红心（`Brush.HeartGradient`）+ 红色 `DropShadowEffect` 辉光 +
+两圈由节拍驱动的扩散光环（`MinimalRipple` / `MinimalRippleOuter`，缩放 + 透明度渐隐）；
+数字使用 56px 粗体 + 黑色投影，保证叠在亮色壁纸或 0% 透明背景上依然清晰。
 
 | 交互 | 行为 |
 |------|------|
-| 顶栏极简按钮 / 托盘菜单「极简模式」 | 进入/退出（`MainViewModel.ToggleMinimalModeCommand`） |
+| 顶栏 ⤢ 按钮 / `Ctrl+M` / 托盘菜单「极简模式」/ 设置→外观 | 进入/退出（`MainViewModel.ToggleMinimalModeCommand`） |
 | 极简窗口内双击 | 退出极简模式 |
-| 极简窗口内拖动 | `DragMove` 并保存位置 |
-| 极简窗口右键 | 「显示趋势曲线」勾选项（`ToggleMinimalChartCommand`）/ 退出极简 / 设置 / 最小化 / 关闭 |
-| 设置 → 外观 | 「极简模式」开关（`MinimalMode`）、「显示趋势曲线」开关（`MinimalShowChart`） |
+| 极简窗口内拖动 | 整窗 `DragMove` 并保存位置 |
+| 极简窗口右键 | 「显示趋势曲线」勾选、背景 100% / 90% / 80% / 0% 快捷预设、回到看板、设置、最小化、关闭 |
+| 托盘右键 | 「极简模式」、「显示趋势曲线」、「背景不透明度」子菜单 |
 
 - 视图切换：主窗口 XAML 中 `NormalView` 与 `MinimalView` 两个兄弟 Grid，分别绑定
   `IsMinimalMode`（`BoolToVisibility` 正/反向）；切换时 `MainWindow.ApplyPreferences()` 调整窗口尺寸
-  （极简 `MinWidth=150 / MaxWidth=320 / MaxHeight=320 / Width=180`）并重建背景 alpha。
-- 数据来源：`MainViewModel.CurrentBpm` / `MinimalZoneName` / `MinimalZoneColor` / `SessionPoints`，
-  由 `IHeartRateSession.SampleReceived` 驱动（`ApplyMinimalState()`），心跳动画周期 `clamp(60/bpm, 0.4, 1.6)`。
+  （极简 `MinWidth=176 / MaxWidth=180 / MaxHeight=320 / Width=180`，收紧 `MaxWidth` 可防止 XAML 初始
+  `Width=320` 在布局阶段把窗口拉回看板宽度）并重建背景 alpha。
+- 数据来源：`MainViewModel.CurrentBpmText`（0 → `--`）、`MinimalZoneName`（窗口 ToolTip）、`SessionPoints`
+  （曲线）；极简切换与透明预设分别走 `ToggleMinimalModeCommand`、`SetOverlayOpacityCommand(double)`。
+- 心跳动画：`MainWindow.UpdateMinimalHeart(bpm)`，节拍 `beat = clamp(60 / bpm, 0.28, 2.0)` 秒，
+  关键帧 `1.00 → 1.20(10%) → 0.97(22%) → 1.10(32%) → 1.00(62%)` 循环；无数据时退化为 1.6s 呼吸动画（1.00→1.06）。
+- 背景透明：`OverlayOpacity = 0` 时外壳画刷 alpha 置 0，但**命中测试 alpha 保留 1/255**
+  （`MainWindow.ApplyShellTransparency()`）；否则分层窗口（`AllowsTransparency`）整窗鼠标穿透，
+  无法拖动或弹出右键菜单。0% 时同时移除窗口阴影。
 - 极简模式持久化在 `MinimalMode`；曲线开关持久化在 `MinimalShowChart`（默认 true）。
 
 ### 托盘（自研 `TrayIcon`）
@@ -299,6 +343,7 @@ ThemeManager.Apply(theme, accentHex) ─ 运行时替换主题字典 + 计算注
 | 主窗 VM | `src/HeartRateMonitor.App/ViewModels/MainViewModel.cs` | 组件集合与增删、布局持久化、连接状态、插件变更响应 |
 | 主窗 VM | `src/HeartRateMonitor.App/ViewModels/WidgetTileViewModel.cs` | 单个组件卡片的宿主外壳数据（Descriptor + View + 插件名） |
 | 组件 | `src/HeartRateMonitor.App/Widgets/*.cs` | 7 个内置组件视图（纯 C# 构建，无 XAML） |
+| 规则 | `src/HeartRateMonitor.Core/Models/BleAdvertisementRules.cs` | 广播是否收录、占位名升级、心率优先 + 信号排序（`BleService` 与设备组件共用，含单测） |
 | 组件基类 | `src/HeartRateMonitor.App/Widgets/WidgetViewBase.cs` | `Grid` + `IWidgetContext`，`Attach/Detach/Dispose` 统一订阅生命周期 |
 | 组件工具 | `src/HeartRateMonitor.App/Widgets/WidgetUi.cs` | 文本/图标/chip/间隔等小工具，保持各组件视觉一致 |
 | 设置窗 | `src/HeartRateMonitor.App/Views/SettingsWindow.xaml(.cs)` | 左导航 + 内容页宿主 + 保存/取消/恢复默认 |

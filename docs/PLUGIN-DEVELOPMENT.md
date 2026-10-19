@@ -486,3 +486,5 @@ dotnet build samples/Breathing/Breathing.csproj -c Debug
 | `IPluginHost` | `Plugins` / `Widgets` / `Commands` / `SettingsSections` / `PluginsDirectory` / `PluginsChanged` / `InitializeAsync` / `EnableAsync` / `DisableAsync` / `RescanAsync` / `ReloadAsync` / `UninstallAsync` |
 | `PluginInfo` | 插件列表项：`Id` / `Name` / `Source` / `Version` / `IsEnabled` / `Error` / `CanUninstall` / `Location` |
 | `IHeartRateSession` | `CurrentBpm` / `Latest` / `StartedAt` / `Duration` / `MinBpm` / `MaxBpm` / `AverageBpm` / `SampleCount` / `Calories` / `Points` / 事件 / `Reset()` |
+| `IBleService` | `State` / `ConnectedDevice` / `IsScanning` / `StartScanningAsync` / `StopScanningAsync` / `ConnectAsync` / `DisconnectAsync` / `GetDiscoveredDevices`；事件 `HeartRateReceived` / `ConnectionStateChanged` / `DeviceDiscovered` / `DeviceUpdated`（已发现设备的名称升级或心率服务标记变化时触发）/ `ScanFailed` |
+| `BleDevice` | `DeviceId` / `DeviceName` / `SignalStrength` / `IsConnectable` / `BluetoothAddress` / `AdvertisesHeartRate` |

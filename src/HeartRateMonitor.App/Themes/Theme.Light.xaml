@@ -16,6 +16,8 @@
     <Color x:Key="Color.Warning">#D97706</Color>
     <Color x:Key="Color.Grid">#E5EAF5</Color>
     <Color x:Key="Color.Overlay">#EAEEF8</Color>
+    <Color x:Key="Color.Heart">#E11D48</Color>
+    <Color x:Key="Color.HeartSoft">#22E11D48</Color>
 
     <SolidColorBrush x:Key="Brush.Background" Color="{StaticResource Color.Background}" />
     <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
@@ -30,5 +32,13 @@
     <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
     <SolidColorBrush x:Key="Brush.Grid" Color="{StaticResource Color.Grid}" />
     <SolidColorBrush x:Key="Brush.Overlay" Color="{StaticResource Color.Overlay}" />
+    <SolidColorBrush x:Key="Brush.Heart" Color="{StaticResource Color.Heart}" />
+    <SolidColorBrush x:Key="Brush.HeartSoft" Color="{StaticResource Color.HeartSoft}" />
+
+    <LinearGradientBrush x:Key="Brush.HeartGradient" StartPoint="0.15,0" EndPoint="0.85,1">
+        <GradientStop Color="#FF6B81" Offset="0" />
+        <GradientStop Color="#E11D48" Offset="0.55" />
+        <GradientStop Color="#BE123C" Offset="1" />
+    </LinearGradientBrush>
 
 </ResourceDictionary>

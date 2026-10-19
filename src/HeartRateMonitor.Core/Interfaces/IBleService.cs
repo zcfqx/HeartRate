@@ -15,6 +15,12 @@ public interface IBleService
     event EventHandler<HeartRateAlertEventArgs>? HeartRateAlert;
     event EventHandler<BleDevice>? DeviceDiscovered;
 
+    /// <summary>
+    /// 已发现设备的信息发生实质变化（名称从占位名升级为真实名称、补上心率服务标记）时触发，
+    /// 让界面可以就地刷新条目，而不必重建整个列表。
+    /// </summary>
+    event EventHandler<BleDevice>? DeviceUpdated;
+
     /// <summary>扫描过程中断（例如扫描途中蓝牙被关闭）时触发。</summary>
     event EventHandler<BleScanFailedEventArgs>? ScanFailed;
 
