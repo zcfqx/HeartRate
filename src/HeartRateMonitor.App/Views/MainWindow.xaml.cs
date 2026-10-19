@@ -100,6 +100,7 @@ public partial class MainWindow : Window
             }
 
             ApplyShellTransparency();
+            ApplyMinimalSkin();
         }
         catch (Exception ex)
         {
@@ -108,14 +109,86 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 把极简模式皮肤应用到悬浮窗：数字颜色与阴影、红心渐变与光环、趋势曲线。
+    /// 皮肤只影响极简模式；看板与设置页仍走应用主题。
+    /// </summary>
+    private void ApplyMinimalSkin()
+    {
+        try
+        {
+            var (text, heart, chart) = MinimalSkinPalette.Resolve(_settings);
+
+            var textBrush = new SolidColorBrush(text);
+            textBrush.Freeze();
+            MinimalBpm.Foreground = textBrush;
+
+            // 亮字配黑色投影、深字配白色发光，任何底色上都能压出轮廓。
+            if (MinimalBpm.Effect is DropShadowEffect textShadow)
+            {
+                textShadow.Color = MinimalSkinPalette.Luminance(text) > 140 ? Colors.Black : Colors.White;
+                textShadow.Opacity = Math.Clamp(_settings.MinimalTextShadow, 0, 1) * 0.85;
+                textShadow.BlurRadius = Math.Clamp(MinimalBpm.FontSize * 0.45, 8, 40);
+                textShadow.ShadowDepth = 0;
+            }
+
+            var heartTop = MinimalSkinPalette.Lighten(heart, 0.45);
+            var heartBrush = new LinearGradientBrush(
+                heartTop,
+                heart,
+                new Point(0.15, 0),
+                new Point(0.85, 1));
+            heartBrush.Freeze();
+            MinimalHeart.Fill = heartBrush;
+
+            if (MinimalHeart.Effect is DropShadowEffect heartGlow)
+            {
+                heartGlow.Color = heart;
+            }
+
+            var rippleFill = new SolidColorBrush(Color.FromArgb(0x33, heart.R, heart.G, heart.B));
+            rippleFill.Freeze();
+            MinimalRipple.Fill = rippleFill;
+
+            var rippleStroke = new SolidColorBrush(Color.FromArgb(0x66, heart.R, heart.G, heart.B));
+            rippleStroke.Freeze();
+            MinimalRippleOuter.Stroke = rippleStroke;
+
+            if (MinimalSpark is not null)
+            {
+                var chartBrush = new LinearGradientBrush(
+                    MinimalSkinPalette.Lighten(chart, 0.25),
+                    chart,
+                    new Point(0, 0),
+                    new Point(1, 0));
+                chartBrush.Freeze();
+                MinimalSpark.LineBrush = chartBrush;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Error("应用极简模式皮肤失败", ex);
+        }
+    }
+
+    /// <summary>皮肤是否需要浅色底板（深色文字配浅色面板，避免深字压深色面板）。</summary>
+    private bool IsLightSkin()
+        => MinimalSkinPalette.Luminance(MinimalSkinPalette.Resolve(_settings).Text) < 140;
+
+    /// <summary>
     /// 背景不透明度支持 0（完全透明）：直接改 Shell 背景画刷的 Alpha，
     /// 而不是 Window.Opacity，这样文字与曲线始终保持清晰。
     /// </summary>
     private void ApplyShellTransparency()
     {
         var alpha = (byte)Math.Round(Math.Clamp(_settings.OverlayOpacity, 0.0, 1.0) * 255);
-        var surface = TryGetColor("Color.Surface", Color.FromRgb(0x12, 0x1A, 0x2E));
-        var border = TryGetColor("Color.Border", Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
+        // 「亮底·深字」等浅色皮肤需要浅色面板；否则深色数字压在深色面板上看不见。
+        var lightSkin = IsLightSkin();
+        var surface = lightSkin
+            ? Color.FromRgb(0xF6, 0xF8, 0xFC)
+            : TryGetColor("Color.Surface", Color.FromRgb(0x12, 0x1A, 0x2E));
+        var border = lightSkin
+            ? Color.FromArgb(0x33, 0x00, 0x00, 0x00)
+            : TryGetColor("Color.Border", Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
 
         // 分层窗口（AllowsTransparency）的命中测试按 Alpha 进行：Alpha=0 的像素会把鼠标
         // 透传给桌面，用户就抓不到窗口。所以 0% 时仍保留 1/255 的不可见底色，
@@ -147,11 +220,12 @@ public partial class MainWindow : Window
     {
         if (!Dispatcher.CheckAccess())
         {
-            Dispatcher.BeginInvoke(ApplyShellTransparency);
+            Dispatcher.BeginInvoke(ApplyPreferences);
             return;
         }
 
-        ApplyShellTransparency();
+        // Auto 皮肤的文字颜色跟随主题，主题切换后需要重新计算。
+        ApplyPreferences();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

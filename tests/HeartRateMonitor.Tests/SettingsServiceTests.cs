@@ -174,6 +174,74 @@ public class SettingsServiceTests
     }
 
     [TestMethod]
+    public void MinimalSkin_Defaults_Keep_Original_Look()
+    {
+        Assert.AreEqual("Dark", _settings.MinimalSkin);
+        Assert.AreEqual("#FFFFFF", _settings.MinimalTextColor);
+        Assert.AreEqual("#FF3B5C", _settings.MinimalHeartColor);
+        Assert.AreEqual("#FF3B5C", _settings.MinimalChartColor);
+        Assert.AreEqual(0.6, _settings.MinimalTextShadow, 0.001);
+    }
+
+    [TestMethod]
+    public async Task MinimalSkin_RoundTrips()
+    {
+        _settings.MinimalSkin = "Light";
+        _settings.MinimalTextColor = "#111827";
+        _settings.MinimalHeartColor = "#E11D48";
+        _settings.MinimalChartColor = "#E11D48";
+        _settings.MinimalTextShadow = 0.25;
+        await _settings.SaveAsync();
+
+        var reloaded = new SettingsService(_repository, new NullLogger());
+        await reloaded.LoadAsync();
+
+        Assert.AreEqual("Light", reloaded.MinimalSkin);
+        Assert.AreEqual("#111827", reloaded.MinimalTextColor);
+        Assert.AreEqual("#E11D48", reloaded.MinimalHeartColor);
+        Assert.AreEqual("#E11D48", reloaded.MinimalChartColor);
+        Assert.AreEqual(0.25, reloaded.MinimalTextShadow, 0.001);
+    }
+
+    [TestMethod]
+    public void MinimalSkin_Values_Are_Sanitized()
+    {
+        _settings.MinimalSkin = "NotASkin";
+        _settings.MinimalTextColor = "red";
+        _settings.MinimalHeartColor = "#GGGGGG";
+        _settings.MinimalTextShadow = 5;
+
+        Assert.AreEqual("Dark", _settings.MinimalSkin);
+        Assert.AreEqual("#FFFFFF", _settings.MinimalTextColor);
+        Assert.AreEqual("#FF3B5C", _settings.MinimalHeartColor);
+        Assert.AreEqual(1.0, _settings.MinimalTextShadow, 0.001);
+
+        _settings.MinimalTextColor = "ff8800";
+        _settings.MinimalTextShadow = -1;
+
+        Assert.AreEqual("#FF8800", _settings.MinimalTextColor);
+        Assert.AreEqual(0.0, _settings.MinimalTextShadow, 0.001);
+    }
+
+    [TestMethod]
+    public void MinimalSkin_ResetToDefaults_Restores_Original_Look()
+    {
+        _settings.MinimalSkin = "Neon";
+        _settings.MinimalTextColor = "#A5F3FC";
+        _settings.MinimalHeartColor = "#22D3EE";
+        _settings.MinimalChartColor = "#22D3EE";
+        _settings.MinimalTextShadow = 0.1;
+
+        _settings.ResetToDefaults();
+
+        Assert.AreEqual("Dark", _settings.MinimalSkin);
+        Assert.AreEqual("#FFFFFF", _settings.MinimalTextColor);
+        Assert.AreEqual("#FF3B5C", _settings.MinimalHeartColor);
+        Assert.AreEqual("#FF3B5C", _settings.MinimalChartColor);
+        Assert.AreEqual(0.6, _settings.MinimalTextShadow, 0.001);
+    }
+
+    [TestMethod]
     public void WindowTopmost_Defaults_To_True()
     {
         Assert.IsTrue(_settings.WindowTopmost);

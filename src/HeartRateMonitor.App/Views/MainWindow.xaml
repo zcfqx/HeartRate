@@ -305,6 +305,14 @@
                                 <MenuItem.CommandParameter><sys:Double>1.5</sys:Double></MenuItem.CommandParameter>
                             </MenuItem>
                         </MenuItem>
+                        <MenuItem Header="皮肤">
+                            <MenuItem Header="自动（跟随主题）" Command="{Binding SetMinimalSkinCommand}" CommandParameter="Auto"/>
+                            <MenuItem Header="暗夜·白字" Command="{Binding SetMinimalSkinCommand}" CommandParameter="Dark"/>
+                            <MenuItem Header="亮底·深字" Command="{Binding SetMinimalSkinCommand}" CommandParameter="Light"/>
+                            <MenuItem Header="霓虹·青" Command="{Binding SetMinimalSkinCommand}" CommandParameter="Neon"/>
+                            <MenuItem Header="暖阳·橙" Command="{Binding SetMinimalSkinCommand}" CommandParameter="Warm"/>
+                            <MenuItem Header="自定义" Command="{Binding SetMinimalSkinCommand}" CommandParameter="Custom"/>
+                        </MenuItem>
                         <MenuItem Header="窗口置顶" IsCheckable="True"
                                   IsChecked="{Binding WindowTopmost, Mode=OneWay}"
                                   Command="{Binding ToggleTopmostCommand}"/>
@@ -375,7 +383,8 @@
 
                     <Grid x:Name="MinimalChartHost" Width="128" Height="34" Margin="0,2,0,0"
                           Visibility="{Binding MinimalShowChart, Converter={StaticResource BoolToVisibility}}">
-                        <controls:Sparkline Points="{Binding SessionPoints}"
+                        <controls:Sparkline x:Name="MinimalSpark"
+                                            Points="{Binding SessionPoints}"
                                             LineBrush="{DynamicResource Brush.HeartGradient}"
                                             FillBrush="Transparent"
                                             MinimumBpm="40" MaximumBpm="200"/>

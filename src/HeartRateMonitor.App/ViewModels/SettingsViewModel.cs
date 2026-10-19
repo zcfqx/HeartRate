@@ -232,6 +232,160 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>极简模式皮肤：Auto（跟随主题）/ Dark / Light / Neon / Warm / Custom。</summary>
+    public string MinimalSkin
+    {
+        get => _settings.MinimalSkin;
+        set
+        {
+            var normalized = MinimalSkinPalette.Normalize(value);
+            if (string.Equals(_settings.MinimalSkin, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _settings.MinimalSkin = normalized;
+            if (normalized != MinimalSkinPalette.Custom)
+            {
+                var colors = MinimalSkinPalette.GetPresetColors(normalized);
+                _settings.MinimalTextColor = colors.Text;
+                _settings.MinimalHeartColor = colors.Heart;
+                _settings.MinimalChartColor = colors.Chart;
+                OnPropertyChanged(nameof(MinimalTextColor));
+                OnPropertyChanged(nameof(MinimalHeartColor));
+                OnPropertyChanged(nameof(MinimalChartColor));
+            }
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(MinimalSkinLabel));
+            _settings.NotifySettingsChanged();
+        }
+    }
+
+    /// <summary>当前皮肤的中文名（设置页显示）。</summary>
+    public string MinimalSkinLabel => MinimalSkinPalette.LabelFor(_settings.MinimalSkin);
+
+    /// <summary>极简模式数字颜色（#RRGGBB）。</summary>
+    public string MinimalTextColor
+    {
+        get => _settings.MinimalTextColor;
+        set
+        {
+            var normalized = MinimalSkinPalette.NormalizeColor(value, "#FFFFFF");
+            if (string.Equals(_settings.MinimalTextColor, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _settings.MinimalTextColor = normalized;
+            OnPropertyChanged();
+            EnterCustomSkin();
+            _settings.NotifySettingsChanged();
+        }
+    }
+
+    /// <summary>极简模式心形颜色（#RRGGBB）。</summary>
+    public string MinimalHeartColor
+    {
+        get => _settings.MinimalHeartColor;
+        set
+        {
+            var normalized = MinimalSkinPalette.NormalizeColor(value, "#FF3B5C");
+            if (string.Equals(_settings.MinimalHeartColor, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _settings.MinimalHeartColor = normalized;
+            OnPropertyChanged();
+            EnterCustomSkin();
+            _settings.NotifySettingsChanged();
+        }
+    }
+
+    /// <summary>极简模式趋势曲线颜色（#RRGGBB）。</summary>
+    public string MinimalChartColor
+    {
+        get => _settings.MinimalChartColor;
+        set
+        {
+            var normalized = MinimalSkinPalette.NormalizeColor(value, "#FF3B5C");
+            if (string.Equals(_settings.MinimalChartColor, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _settings.MinimalChartColor = normalized;
+            OnPropertyChanged();
+            EnterCustomSkin();
+            _settings.NotifySettingsChanged();
+        }
+    }
+
+    /// <summary>极简模式数字阴影强度（0–1）。</summary>
+    public double MinimalTextShadow
+    {
+        get => _settings.MinimalTextShadow;
+        set
+        {
+            if (Math.Abs(_settings.MinimalTextShadow - value) < 0.001)
+            {
+                return;
+            }
+
+            _settings.MinimalTextShadow = value;
+            OnPropertyChanged();
+            _settings.NotifySettingsChanged();
+        }
+    }
+
+    /// <summary>切换预设皮肤（设置页皮肤按钮）。</summary>
+    [RelayCommand]
+    private void SetMinimalSkin(string? skin) => MinimalSkin = MinimalSkinPalette.Normalize(skin);
+
+    /// <summary>快捷设置极简模式颜色，参数格式 "Text:#FFFFFF" / "Heart:#FF3B5C" / "Chart:#FF3B5C"。</summary>
+    [RelayCommand]
+    private void SetMinimalColor(string? parameter)
+    {
+        if (string.IsNullOrWhiteSpace(parameter))
+        {
+            return;
+        }
+
+        var parts = parameter.Split(':', 2);
+        if (parts.Length != 2)
+        {
+            return;
+        }
+
+        var hex = parts[1].Trim();
+        switch (parts[0].Trim().ToLowerInvariant())
+        {
+            case "text":
+                MinimalTextColor = hex;
+                break;
+            case "heart":
+                MinimalHeartColor = hex;
+                break;
+            case "chart":
+                MinimalChartColor = hex;
+                break;
+        }
+    }
+
+    /// <summary>手动改色时自动切到“自定义”，避免之后切回预设时被覆盖。</summary>
+    private void EnterCustomSkin()
+    {
+        if (string.Equals(_settings.MinimalSkin, MinimalSkinPalette.Custom, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _settings.MinimalSkin = MinimalSkinPalette.Custom;
+        OnPropertyChanged(nameof(MinimalSkin));
+        OnPropertyChanged(nameof(MinimalSkinLabel));
+    }
+
     /// <summary>窗口置顶：始终显示在其他窗口之上。</summary>
     public bool WindowTopmost
     {

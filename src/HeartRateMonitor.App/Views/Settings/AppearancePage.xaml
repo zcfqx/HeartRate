@@ -1,6 +1,18 @@
 <UserControl x:Class="HeartRateMonitor.App.Views.Settings.AppearancePage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- 快捷色块：去掉系统按钮外观，只显示里面的纯色块 -->
+        <Style x:Key="ColorSwatchButton" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </UserControl.Resources>
     <StackPanel>
         <TextBlock Text="外观" Style="{StaticResource Text.H1}" Margin="0,0,0,6"/>
         <TextBlock Text="调整主题、强调色与悬浮窗尺寸。改动即时生效，关闭设置时自动保存。"
@@ -156,6 +168,245 @@
                         Value="{Binding MinimalChartScale}" Margin="0,0,0,4"/>
                 <TextBlock Text="也可以极简窗口上滚动滚轮，或右键菜单选择预设尺寸。"
                            Style="{StaticResource Text.Caption}"/>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="极简模式皮肤" Style="{StaticResource Text.H2}" Margin="0,0,0,6"/>
+                <TextBlock Text="桌面或视频背景偏亮时，白色数字容易看不清。可切换皮肤，或自定义数字/红心/曲线颜色。"
+                           Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                <!-- 预设皮肤：3 列 × 2 行 -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource Button.Outline}"
+                            Content="自动（跟随主题）" Margin="0,0,6,6"
+                            Command="{Binding SetMinimalSkinCommand}" CommandParameter="Auto"/>
+                    <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource Button.Outline}"
+                            Content="暗夜·白字" Margin="0,0,6,6"
+                            Command="{Binding SetMinimalSkinCommand}" CommandParameter="Dark"/>
+                    <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource Button.Outline}"
+                            Content="亮底·深字" Margin="0,0,0,6"
+                            Command="{Binding SetMinimalSkinCommand}" CommandParameter="Light"/>
+                    <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource Button.Outline}"
+                            Content="霓虹·青" Margin="0,0,6,0"
+                            Command="{Binding SetMinimalSkinCommand}" CommandParameter="Neon"/>
+                    <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource Button.Outline}"
+                            Content="暖阳·橙" Margin="0,0,6,0"
+                            Command="{Binding SetMinimalSkinCommand}" CommandParameter="Warm"/>
+                    <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource Button.Outline}"
+                            Content="自定义" Margin="0,0,0,0"
+                            Command="{Binding SetMinimalSkinCommand}" CommandParameter="Custom"/>
+                </Grid>
+
+                <TextBlock Text="{Binding MinimalSkinLabel, StringFormat={}当前皮肤：{0}}"
+                           Style="{StaticResource Text.Caption}" Margin="0,0,0,14"/>
+
+                <Border Style="{StaticResource SeparatorLine}" Margin="0,0,0,14"/>
+
+                <TextBlock Text="自定义颜色" Style="{StaticResource Text.Label}" Margin="0,0,0,10"/>
+
+                <!-- 数字颜色 -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="数字颜色" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <Border Grid.Column="1" Width="18" Height="18" CornerRadius="4"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            VerticalAlignment="Center"
+                            Background="{Binding MinimalTextColor, Converter={StaticResource HexToBrush}}"/>
+                    <TextBox Grid.Column="2" Width="90" Margin="8,0,10,0" TextAlignment="Center" MaxLength="7"
+                             Text="{Binding MinimalTextColor, UpdateSourceTrigger=PropertyChanged}"/>
+                    <WrapPanel Grid.Column="3" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#FFFFFF"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#FFFFFF">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#FFFFFF"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#111827"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#111827">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#111827"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#FFE100"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#FFE100">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#FFE100"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#22D3EE"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#22D3EE">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#22D3EE"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#F97316"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#F97316">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#F97316"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#34D399"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#34D399">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#34D399"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#A78BFA"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#A78BFA">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#A78BFA"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#F87171"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Text:#F87171">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#F87171"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                    </WrapPanel>
+                </Grid>
+
+                <!-- 红心颜色 -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="红心颜色" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <Border Grid.Column="1" Width="18" Height="18" CornerRadius="4"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            VerticalAlignment="Center"
+                            Background="{Binding MinimalHeartColor, Converter={StaticResource HexToBrush}}"/>
+                    <TextBox Grid.Column="2" Width="90" Margin="8,0,10,0" TextAlignment="Center" MaxLength="7"
+                             Text="{Binding MinimalHeartColor, UpdateSourceTrigger=PropertyChanged}"/>
+                    <WrapPanel Grid.Column="3" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#FF3B5C"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#FF3B5C">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#FF3B5C"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#E11D48"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#E11D48">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#E11D48"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#F97316"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#F97316">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#F97316"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#22D3EE"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#22D3EE">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#22D3EE"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#34D399"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#34D399">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#34D399"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#A78BFA"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#A78BFA">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#A78BFA"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#FFE100"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#FFE100">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#FFE100"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#F1F5F9"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Heart:#F1F5F9">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#F1F5F9"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                    </WrapPanel>
+                </Grid>
+
+                <!-- 曲线颜色 -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="曲线颜色" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <Border Grid.Column="1" Width="18" Height="18" CornerRadius="4"
+                            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                            VerticalAlignment="Center"
+                            Background="{Binding MinimalChartColor, Converter={StaticResource HexToBrush}}"/>
+                    <TextBox Grid.Column="2" Width="90" Margin="8,0,10,0" TextAlignment="Center" MaxLength="7"
+                             Text="{Binding MinimalChartColor, UpdateSourceTrigger=PropertyChanged}"/>
+                    <WrapPanel Grid.Column="3" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#FF3B5C"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#FF3B5C">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#FF3B5C"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#E11D48"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#E11D48">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#E11D48"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#F97316"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#F97316">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#F97316"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#22D3EE"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#22D3EE">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#22D3EE"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#34D399"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#34D399">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#34D399"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#A78BFA"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#A78BFA">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#A78BFA"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#FFE100"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#FFE100">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#FFE100"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                        <Button Style="{StaticResource ColorSwatchButton}" ToolTip="#F1F5F9"
+                                Command="{Binding SetMinimalColorCommand}" CommandParameter="Chart:#F1F5F9">
+                            <Border Width="20" Height="20" CornerRadius="4" Background="#F1F5F9"
+                                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"/>
+                        </Button>
+                    </WrapPanel>
+                </Grid>
+
+                <Border Style="{StaticResource SeparatorLine}" Margin="0,4,0,14"/>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="文字阴影/描边强度" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding MinimalTextShadow, StringFormat={}{0:P0}}"
+                               Style="{StaticResource Text.Caption}" VerticalAlignment="Center"/>
+                </Grid>
+                <Slider Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1"
+                        Value="{Binding MinimalTextShadow}" Margin="0,0,0,4"/>
+                <TextBlock Text="提示：亮色背景下选「亮底·深字」；颜色遵循 #RRGGBB 写法，输入即生效。"
+                           Style="{StaticResource Text.Caption}" TextWrapping="Wrap"/>
             </StackPanel>
         </Border>
 

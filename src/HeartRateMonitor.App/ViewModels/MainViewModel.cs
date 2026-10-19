@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HeartRateMonitor.App.Extensibility;
+using HeartRateMonitor.App.Infrastructure;
 using HeartRateMonitor.Core.Enums;
 using HeartRateMonitor.Core.Events;
 using HeartRateMonitor.Core.Interfaces;
@@ -79,6 +80,31 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _windowTopmost = true;
 
+    /// <summary>极简模式皮肤：Auto（跟随主题）/ Dark / Light / Neon / Warm / Custom。</summary>
+    [ObservableProperty]
+    private string _minimalSkin = MinimalSkinPalette.Dark;
+
+    /// <summary>极简模式心率数字颜色（#RRGGBB）。</summary>
+    [ObservableProperty]
+    private string _minimalTextColor = "#FFFFFF";
+
+    /// <summary>极简模式心形颜色（#RRGGBB）。</summary>
+    [ObservableProperty]
+    private string _minimalHeartColor = "#FF3B5C";
+
+    /// <summary>极简模式趋势曲线颜色（#RRGGBB）。</summary>
+    [ObservableProperty]
+    private string _minimalChartColor = "#FF3B5C";
+
+    /// <summary>极简模式数字阴影强度（0–1）。</summary>
+    [ObservableProperty]
+    private double _minimalTextShadow = 0.6;
+
+    /// <summary>当前皮肤的中文名（设置页与右键菜单提示用）。</summary>
+    public string MinimalSkinLabel => MinimalSkinPalette.LabelFor(MinimalSkin);
+
+    partial void OnMinimalSkinChanged(string value) => OnPropertyChanged(nameof(MinimalSkinLabel));
+
     /// <summary>极简模式趋势图数据（随心跳刷新）。</summary>
     public IReadOnlyList<HeartRatePoint> SessionPoints => _session.Points;
 
@@ -121,6 +147,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IsMinimalMode = _settings.MinimalMode;
         MinimalShowChart = _settings.MinimalShowChart;
         WindowTopmost = _settings.WindowTopmost;
+        ApplySkinFromSettings();
 
         UpdateConnection(_ble.State, _ble.ConnectedDevice?.DeviceName);
         RefreshLayout();
@@ -232,8 +259,76 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _ = SaveSettingsAsync();
     }
 
-    // === 布局 ===
+    /// <summary>切换极简模式皮肤：预设会同步写入配套配色，Custom 保留当前配色。</summary>
+    [RelayCommand]
+    private void SetMinimalSkin(string? skin)
+    {
+        var normalized = MinimalSkinPalette.Normalize(skin);
+        _settings.MinimalSkin = normalized;
+        if (normalized != MinimalSkinPalette.Custom)
+        {
+            var colors = MinimalSkinPalette.GetPresetColors(normalized);
+            _settings.MinimalTextColor = colors.Text;
+            _settings.MinimalHeartColor = colors.Heart;
+            _settings.MinimalChartColor = colors.Chart;
+        }
 
+        ApplySkinFromSettings();
+        _settings.NotifySettingsChanged();
+        _ = SaveSettingsAsync();
+    }
+
+    /// <summary>
+    /// 设置极简模式颜色，参数格式 "Text:#FFFFFF" / "Heart:#FF3B5C" / "Chart:#FF3B5C"。
+    /// 手动改色后皮肤自动切到“自定义”，避免之后选预设时被覆盖。
+    /// </summary>
+    [RelayCommand]
+    private void SetMinimalColor(string? parameter)
+    {
+        if (string.IsNullOrWhiteSpace(parameter))
+        {
+            return;
+        }
+
+        var parts = parameter.Split(':', 2);
+        if (parts.Length != 2)
+        {
+            return;
+        }
+
+        var hex = parts[1].Trim();
+        switch (parts[0].Trim().ToLowerInvariant())
+        {
+            case "text":
+                _settings.MinimalTextColor = hex;
+                break;
+            case "heart":
+                _settings.MinimalHeartColor = hex;
+                break;
+            case "chart":
+                _settings.MinimalChartColor = hex;
+                break;
+            default:
+                return;
+        }
+
+        _settings.MinimalSkin = MinimalSkinPalette.Custom;
+        ApplySkinFromSettings();
+        _settings.NotifySettingsChanged();
+        _ = SaveSettingsAsync();
+    }
+
+    /// <summary>把皮肤相关设置回填到 ViewModel（供绑定与菜单显示）。</summary>
+    private void ApplySkinFromSettings()
+    {
+        MinimalSkin = _settings.MinimalSkin;
+        MinimalTextColor = _settings.MinimalTextColor;
+        MinimalHeartColor = _settings.MinimalHeartColor;
+        MinimalChartColor = _settings.MinimalChartColor;
+        MinimalTextShadow = _settings.MinimalTextShadow;
+    }
+
+    // === 布局 ===
     private WidgetTileViewModel CreateTile(WidgetDescriptor descriptor)
     {
         var context = (IWidgetContext)_contexts.Create(descriptor.PluginId, () => RemoveById(descriptor.Id));
@@ -368,6 +463,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (WindowTopmost != _settings.WindowTopmost)
         {
             WindowTopmost = _settings.WindowTopmost;
+        }
+
+        // 设置页保存后同步皮肤（颜色/阴影/皮肤名），保证右键菜单与显示一致。
+        if (!string.Equals(MinimalSkin, _settings.MinimalSkin, StringComparison.Ordinal)
+            || !string.Equals(MinimalTextColor, _settings.MinimalTextColor, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(MinimalHeartColor, _settings.MinimalHeartColor, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(MinimalChartColor, _settings.MinimalChartColor, StringComparison.OrdinalIgnoreCase)
+            || Math.Abs(MinimalTextShadow - _settings.MinimalTextShadow) > 0.001)
+        {
+            ApplySkinFromSettings();
         }
     });
 

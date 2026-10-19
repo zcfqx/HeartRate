@@ -35,6 +35,21 @@ public interface ISettingsService
     /// <summary>极简模式趋势曲线区域缩放比例（0.5–2.5，默认 1.0）。</summary>
     double MinimalChartScale { get; set; }
 
+    /// <summary>极简模式皮肤：Auto（跟随主题）/ Dark / Light / Neon / Warm / Custom。</summary>
+    string MinimalSkin { get; set; }
+
+    /// <summary>极简模式数字颜色（#RRGGBB，默认白色）。</summary>
+    string MinimalTextColor { get; set; }
+
+    /// <summary>极简模式心形颜色（#RRGGBB，默认 #FF3B5C）。</summary>
+    string MinimalHeartColor { get; set; }
+
+    /// <summary>极简模式趋势曲线颜色（#RRGGBB，默认 #FF3B5C）。</summary>
+    string MinimalChartColor { get; set; }
+
+    /// <summary>极简模式数字阴影强度（0–1，默认 0.6）。</summary>
+    double MinimalTextShadow { get; set; }
+
     double WindowLeft { get; set; }
     double WindowTop { get; set; }
     double WindowWidth { get; set; }

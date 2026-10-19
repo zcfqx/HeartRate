@@ -31,6 +31,11 @@ public class SettingsService : ISettingsService
     private const string KeyMinimalHeartSize = "MinimalHeartSize";
     private const string KeyMinimalBpmFontSize = "MinimalBpmFontSize";
     private const string KeyMinimalChartScale = "MinimalChartScale";
+    private const string KeyMinimalSkin = "MinimalSkin";
+    private const string KeyMinimalTextColor = "MinimalTextColor";
+    private const string KeyMinimalHeartColor = "MinimalHeartColor";
+    private const string KeyMinimalChartColor = "MinimalChartColor";
+    private const string KeyMinimalTextShadow = "MinimalTextShadow";
     private const string KeyWindowLeft = "WindowLeft";
     private const string KeyWindowTop = "WindowTop";
     private const string KeyWindowWidth = "WindowWidth";
@@ -80,6 +85,47 @@ public class SettingsService : ISettingsService
         set => _minimalChartScale = double.IsFinite(value) ? Math.Clamp(value, 0.5, 2.5) : 1.0;
     }
 
+    private string _minimalSkin = "Dark";
+    private string _minimalTextColor = "#FFFFFF";
+    private string _minimalHeartColor = "#FF3B5C";
+    private string _minimalChartColor = "#FF3B5C";
+    private double _minimalTextShadow = 0.6;
+
+    /// <summary>极简模式皮肤：Auto（跟随主题）/ Dark / Light / Neon / Warm / Custom。</summary>
+    public string MinimalSkin
+    {
+        get => _minimalSkin;
+        set => _minimalSkin = NormalizeSkin(value);
+    }
+
+    /// <summary>极简模式心率数字颜色（#RRGGBB）。</summary>
+    public string MinimalTextColor
+    {
+        get => _minimalTextColor;
+        set => _minimalTextColor = NormalizeColor(value, "#FFFFFF");
+    }
+
+    /// <summary>极简模式心形颜色（#RRGGBB）。</summary>
+    public string MinimalHeartColor
+    {
+        get => _minimalHeartColor;
+        set => _minimalHeartColor = NormalizeColor(value, "#FF3B5C");
+    }
+
+    /// <summary>极简模式趋势曲线颜色（#RRGGBB）。</summary>
+    public string MinimalChartColor
+    {
+        get => _minimalChartColor;
+        set => _minimalChartColor = NormalizeColor(value, "#FF3B5C");
+    }
+
+    /// <summary>极简模式数字阴影强度，范围 0–1（越大在复杂背景上越清晰）。</summary>
+    public double MinimalTextShadow
+    {
+        get => _minimalTextShadow;
+        set => _minimalTextShadow = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.6;
+    }
+
     public double WindowLeft { get; set; } = 100;
     public double WindowTop { get; set; } = 100;
     public double WindowWidth { get; set; } = 320;
@@ -118,6 +164,11 @@ public class SettingsService : ISettingsService
             MinimalHeartSize = GetDouble(settings, KeyMinimalHeartSize, 1.0);
             MinimalBpmFontSize = GetDouble(settings, KeyMinimalBpmFontSize, 56);
             MinimalChartScale = GetDouble(settings, KeyMinimalChartScale, 1.0);
+            MinimalSkin = GetString(settings, KeyMinimalSkin) ?? "Dark";
+            MinimalTextColor = GetString(settings, KeyMinimalTextColor) ?? "#FFFFFF";
+            MinimalHeartColor = GetString(settings, KeyMinimalHeartColor) ?? "#FF3B5C";
+            MinimalChartColor = GetString(settings, KeyMinimalChartColor) ?? "#FF3B5C";
+            MinimalTextShadow = GetDouble(settings, KeyMinimalTextShadow, 0.6);
             WindowLeft = GetDouble(settings, KeyWindowLeft, 100);
             WindowTop = GetDouble(settings, KeyWindowTop, 100);
             WindowWidth = GetDouble(settings, KeyWindowWidth, 320);
@@ -159,6 +210,11 @@ public class SettingsService : ISettingsService
                 [KeyMinimalHeartSize] = MinimalHeartSize.ToString("F2"),
                 [KeyMinimalBpmFontSize] = MinimalBpmFontSize.ToString("F0"),
                 [KeyMinimalChartScale] = MinimalChartScale.ToString("F2"),
+                [KeyMinimalSkin] = MinimalSkin,
+                [KeyMinimalTextColor] = MinimalTextColor,
+                [KeyMinimalHeartColor] = MinimalHeartColor,
+                [KeyMinimalChartColor] = MinimalChartColor,
+                [KeyMinimalTextShadow] = MinimalTextShadow.ToString("F2"),
                 [KeyWindowLeft] = WindowLeft.ToString("F0"),
                 [KeyWindowTop] = WindowTop.ToString("F0"),
                 [KeyWindowWidth] = WindowWidth.ToString("F0"),
@@ -222,11 +278,53 @@ public class SettingsService : ISettingsService
         MinimalHeartSize = 1.0;
         MinimalBpmFontSize = 56;
         MinimalChartScale = 1.0;
+        MinimalSkin = "Dark";
+        MinimalTextColor = "#FFFFFF";
+        MinimalHeartColor = "#FF3B5C";
+        MinimalChartColor = "#FF3B5C";
+        MinimalTextShadow = 0.6;
         WindowLeft = 100;
         WindowTop = 100;
         WindowWidth = 320;
         Widgets = "";
         DisabledPlugins = "";
+    }
+
+    private static string NormalizeSkin(string? value)
+    {
+        return value switch
+        {
+            "Auto" => "Auto",
+            "Light" => "Light",
+            "Neon" => "Neon",
+            "Warm" => "Warm",
+            "Custom" => "Custom",
+            _ => "Dark"
+        };
+    }
+
+    /// <summary>把 #RRGGBB / #AARRGGBB / RRGGBB 归一化成大写 #RRGGBB，非法值回退到默认色。</summary>
+    private static string NormalizeColor(string? value, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+
+        var text = value.Trim();
+        if (!text.StartsWith('#')) text = "#" + text;
+
+        if (text.Length == 9)
+        {
+            // 带 alpha 的输入只保留颜色部分。
+            text = "#" + text.Substring(3);
+        }
+
+        if (text.Length != 7) return fallback;
+
+        for (var i = 1; i < text.Length; i++)
+        {
+            if (!Uri.IsHexDigit(text[i])) return fallback;
+        }
+
+        return text.ToUpperInvariant();
     }
 
     private static string? GetString(Dictionary<string, string> settings, string key)
