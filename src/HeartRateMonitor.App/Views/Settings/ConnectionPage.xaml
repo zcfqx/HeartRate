@@ -48,8 +48,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="启动时自动重连上次设备" Style="{StaticResource Text.Label}"/>
-                        <TextBlock Text="扫描与连接都在设备组件中完成，这里只控制启动时的自动重连。"
+                        <TextBlock Text="启动时自动连接上次设备" Style="{StaticResource Text.Label}"/>
+                        <TextBlock Text="应用打开后自动扫描并连接上次使用的手环，无需手动点击扫描。"
                                    Style="{StaticResource Text.Caption}"/>
                     </StackPanel>
                     <ToggleButton Grid.Column="1" Style="{StaticResource Switch}"

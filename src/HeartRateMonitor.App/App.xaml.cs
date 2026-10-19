@@ -646,15 +646,65 @@ public partial class App : Application
             var granted = await bleService.RequestPermissionAsync().ConfigureAwait(false);
             logger.Info(granted ? "蓝牙权限已授予" : "蓝牙当前不可用，等待用户开启");
 
-            if (granted && settingsService.AutoConnect && !string.IsNullOrEmpty(settingsService.LastDeviceId))
+            var savedDeviceId = settingsService.LastDeviceId;
+            if (!settingsService.AutoConnect)
+            {
+                logger.Info("启动时自动连接已关闭，可在 设置 → 连接 中开启");
+                return;
+            }
+
+            if (!granted)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(savedDeviceId))
+            {
+                logger.Info("还没有连接过设备，等待在设备组件中扫描并连接");
+                return;
+            }
+
+            // AutoReconnectAsync 只在已有连接时才工作，启动阶段必须走“扫描 → 发现即连接”。
+            // 手环的心率广播有间隔，单次扫描常常刚好错过，因此给两次机会。
+            const int attempts = 2;
+            var timeout = TimeSpan.FromSeconds(20);
+            for (var attempt = 1; attempt <= attempts; attempt++)
             {
                 try
                 {
-                    await bleService.AutoReconnectAsync().ConfigureAwait(false);
+                    var connected = await bleService
+                        .ConnectSavedDeviceAsync(savedDeviceId, timeout)
+                        .ConfigureAwait(false);
+
+                    if (connected)
+                    {
+                        logger.Info("启动时已自动连接上次使用的设备");
+
+                        // 设备名称可能刚从占位名升级，顺手把最新名称写回设置，
+                        // 这样托盘/底栏显示的是手环真实名称。
+                        var name = bleService.ConnectedDevice?.DeviceName;
+                        if (!string.IsNullOrWhiteSpace(name) &&
+                            !string.Equals(name, settingsService.LastDeviceName, StringComparison.Ordinal))
+                        {
+                            settingsService.LastDeviceName = name;
+                            await settingsService.SaveAsync().ConfigureAwait(false);
+                        }
+
+                        return;
+                    }
+
+                    if (attempt < attempts)
+                    {
+                        logger.Info("启动自动连接：本次扫描未发现手环，立即重试一次");
+                    }
+                    else
+                    {
+                        logger.Warning("启动自动连接未成功，可在设备组件中点击“扫描”，或在设置 → 连接中重新连接");
+                    }
                 }
                 catch (Exception rex)
                 {
-                    logger.Warning($"自动重连失败: {rex.Message}");
+                    logger.Warning($"启动自动连接第 {attempt}/{attempts} 次尝试失败: {rex.Message}");
                 }
             }
         }

@@ -406,10 +406,17 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var ok = await _ble.AutoReconnectAsync();
+            var savedDeviceId = _settings.LastDeviceId;
+            if (string.IsNullOrEmpty(savedDeviceId))
+            {
+                _dialogs.ShowMessage("还没有连接过设备，请在主窗口的设备组件中扫描并连接。", "连接");
+                return;
+            }
+
+            var ok = await _ble.ConnectSavedDeviceAsync(savedDeviceId, TimeSpan.FromSeconds(20));
             if (!ok)
             {
-                _dialogs.ShowMessage("自动重连失败，请在主窗口的设备组件中重新扫描并连接。", "连接");
+                _dialogs.ShowMessage("未能连接上次使用的设备，请确认手环已开启心率广播，或到设备组件中重新扫描。", "连接");
             }
         }
         catch (Exception ex)

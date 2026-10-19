@@ -346,6 +346,135 @@ public class BleService : IBleService, IDisposable
         }
     }
 
+    public async Task<bool> ConnectSavedDeviceAsync(string deviceId, TimeSpan timeout)
+    {
+        if (string.IsNullOrWhiteSpace(deviceId))
+        {
+            return false;
+        }
+
+        if (_connectedDevice != null && string.Equals(_connectedDevice.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.Info("自动连接：上次使用的设备已处于连接状态");
+            return true;
+        }
+
+        BleDevice? device;
+        lock (_lock)
+        {
+            device = _discoveredDevices.Values.FirstOrDefault(
+                d => string.Equals(d.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (device == null)
+        {
+            device = await FindDeviceAsync(deviceId, timeout).ConfigureAwait(false);
+        }
+
+        if (device == null)
+        {
+            _logger.Warning($"自动连接：{timeout.TotalSeconds:0} 秒内未发现上次使用的设备（ID: {deviceId}），请确认手环已开启心率广播");
+            return false;
+        }
+
+        try
+        {
+            await ConnectAsync(device).ConfigureAwait(false);
+            _logger.Info($"自动连接成功: {device.DeviceName}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning($"自动连接失败: {device.DeviceName}（{ex.Message}）");
+            return false;
+        }
+    }
+
+    /// <summary>启动一次扫描，等待目标设备出现（或在超时后返回 null），结束后停止扫描。</summary>
+    private async Task<BleDevice?> FindDeviceAsync(string deviceId, TimeSpan timeout)
+    {
+        var tcs = new TaskCompletionSource<BleDevice>(TaskCreationOptions.RunContinuationsAsynchronously);
+        EventHandler<BleDevice>? handler = (_, discovered) =>
+        {
+            if (string.Equals(discovered.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase))
+            {
+                tcs.TrySetResult(discovered);
+            }
+        };
+
+        DeviceDiscovered += handler;
+        try
+        {
+            _logger.Info("自动连接：正在扫描上次使用的设备...");
+            await StartScanningAsync().ConfigureAwait(false);
+
+            using var cts = new CancellationTokenSource(timeout);
+            using (cts.Token.Register(() => tcs.TrySetCanceled()))
+            {
+                BleDevice? found;
+                try
+                {
+                    found = await tcs.Task.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return null;
+                }
+
+                // 华为手环会先广播“心率服务 + 无名称”的包，稍后才补上真实名称。
+                // 连接前多等一会儿名称升级，避免界面上显示成占位的“心率传感器”。
+                if (string.Equals(found.DeviceName, BleAdvertisementRules.HeartRatePlaceholderName, StringComparison.Ordinal))
+                {
+                    await WaitForDeviceNameAsync(found, deviceId, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+                }
+
+                return found;
+            }
+        }
+        finally
+        {
+            DeviceDiscovered -= handler;
+            await StopScanningAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>在扫描继续期间短暂等待同一设备补上真实名称（广告包更新的就是这个可变实例）。</summary>
+    private async Task WaitForDeviceNameAsync(BleDevice device, string deviceId, TimeSpan timeout)
+    {
+        if (!string.Equals(device.DeviceName, BleAdvertisementRules.HeartRatePlaceholderName, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var nameReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        EventHandler<BleDevice>? onUpdated = (_, updated) =>
+        {
+            if (string.Equals(updated.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(updated.DeviceName, BleAdvertisementRules.HeartRatePlaceholderName, StringComparison.Ordinal))
+            {
+                nameReady.TrySetResult(true);
+            }
+        };
+
+        DeviceUpdated += onUpdated;
+        try
+        {
+            using var cts = new CancellationTokenSource(timeout);
+            using (cts.Token.Register(() => nameReady.TrySetCanceled()))
+            {
+                await nameReady.Task.ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 名称没来得及广播就直接用占位名连接，不影响心率数据。
+        }
+        finally
+        {
+            DeviceUpdated -= onUpdated;
+        }
+    }
+
     public async Task<bool> AutoReconnectAsync()
     {
         if (_connectedDevice == null) return false;

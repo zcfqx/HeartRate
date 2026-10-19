@@ -152,6 +152,28 @@ public class SettingsServiceTests
     }
 
     [TestMethod]
+    public void AutoConnect_Defaults_To_True()
+    {
+        Assert.IsTrue(_settings.AutoConnect);
+    }
+
+    [TestMethod]
+    public async Task AutoConnect_RoundTrips_And_Keeps_LastDevice()
+    {
+        _settings.AutoConnect = false;
+        _settings.LastDeviceId = "251697075435764";
+        _settings.LastDeviceName = "HUAWEI Band HR-8F4";
+        await _settings.SaveAsync();
+
+        var reloaded = new SettingsService(_repository, new NullLogger());
+        await reloaded.LoadAsync();
+
+        Assert.IsFalse(reloaded.AutoConnect);
+        Assert.AreEqual("251697075435764", reloaded.LastDeviceId);
+        Assert.AreEqual("HUAWEI Band HR-8F4", reloaded.LastDeviceName);
+    }
+
+    [TestMethod]
     public void WindowTopmost_Defaults_To_True()
     {
         Assert.IsTrue(_settings.WindowTopmost);

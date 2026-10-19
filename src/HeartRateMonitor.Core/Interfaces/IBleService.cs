@@ -33,6 +33,13 @@ public interface IBleService
     Task ConnectAsync(BleDevice device);
     Task DisconnectAsync();
     Task<bool> AutoReconnectAsync();
+
+    /// <summary>
+    /// 连接上次使用过的设备（应用启动、设置页“重新连接”时使用）。先复用已连接或已发现的设备，
+    /// 否则启动一次短扫描，在 <paramref name="timeout"/> 内发现该设备就连接。
+    /// 与 <see cref="AutoReconnectAsync"/> 不同，本方法不要求当前已有连接，因此可在启动时使用。
+    /// </summary>
+    Task<bool> ConnectSavedDeviceAsync(string deviceId, TimeSpan timeout);
     IAsyncEnumerable<BleDevice> DiscoverDevicesAsync(CancellationToken cancellationToken = default);
     List<BleDevice> GetDiscoveredDevices();
 }
