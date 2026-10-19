@@ -1,355 +1,315 @@
 <Window x:Class="HeartRateMonitor.App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
-        xmlns:converters="clr-namespace:HeartRateMonitor.App.Converters"
-        mc:Ignorable="d"
-        Title="心率监控"
-        Width="280" Height="280"
-        AllowsTransparency="True"
-        WindowStyle="None"
-        Background="Transparent"
-        Topmost="True"
-        ShowInTaskbar="True"
-        ResizeMode="NoResize"
-        d:DataContext="{d:DesignInstance Type=ViewModels:MainViewModel}">
+        xmlns:core="clr-namespace:HeartRateMonitor.Core.Enums;assembly=HeartRateMonitor.Core"
+        xmlns:controls="clr-namespace:HeartRateMonitor.App.Controls"
+        Title="HeartRateMonitor"
+        Width="320" SizeToContent="Height" MaxHeight="780" MinWidth="280"
+        WindowStartupLocation="Manual"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="True" Topmost="True">
 
-    <Window.Resources>
-        <converters:HeartRateToColorConverter x:Key="HeartRateToColor"/>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
-        <converters:ConnectionStateToColorConverter x:Key="ConnectionStateToColor"/>
-        <converters:OverlayOpacityToBrushConverter x:Key="OpacityToBrush"/>
+    <Border x:Name="Shell" Margin="14"
+            Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+            CornerRadius="18" Effect="{StaticResource Shadow.Shell}">
+        <Grid>
+            <!-- ===== 普通模式：顶栏 + 组件看板 + 底栏 + 组件库 ===== -->
+            <Grid x:Name="NormalView"
+                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-        <!-- 心跳脉冲动画 -->
-        <Storyboard x:Key="HeartPulseStoryboard" RepeatBehavior="Forever">
-            <DoubleAnimation Storyboard.TargetName="HeartScaleTransform"
-                             Storyboard.TargetProperty="ScaleX"
-                             From="1.0" To="1.15" Duration="0:0:0.25"
-                             AutoReverse="True"/>
-            <DoubleAnimation Storyboard.TargetName="HeartScaleTransform"
-                             Storyboard.TargetProperty="ScaleY"
-                             From="1.0" To="1.15" Duration="0:0:0.25"
-                             AutoReverse="True"/>
-        </Storyboard>
-
-        <!-- 主边框 -->
-        <Style x:Key="MainBorder" TargetType="Border">
-            <Setter Property="Background" Value="{Binding OverlayOpacity, Converter={StaticResource OpacityToBrush}}"/>
-            <Setter Property="CornerRadius" Value="16"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="4"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsMinimalMode}" Value="True">
-                    <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="BorderBrush" Value="Transparent"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Margin" Value="0"/>
-                    <Setter Property="CornerRadius" Value="0"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- 底部标签按钮 -->
-        <Style x:Key="TabButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource Opacity66Brush}"/>
-            <Setter Property="FontSize" Value="10"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Opacity1ABrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- 迷你输入框 -->
-        <Style x:Key="MiniInputTextBox" TargetType="TextBox" BasedOn="{StaticResource InputTextBox}">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Padding" Value="4,2"/>
-        </Style>
-
-        <!-- 迷你开关 -->
-        <Style x:Key="MiniToggleSwitch" TargetType="CheckBox" BasedOn="{StaticResource ToggleSwitch}">
-            <Setter Property="LayoutTransform">
-                <Setter.Value><ScaleTransform ScaleX="0.8" ScaleY="0.8"/></Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- 设备列表项 -->
-        <DataTemplate x:Key="DeviceItemTemplate">
-            <Border Background="Transparent" CornerRadius="6" Padding="10,6" Margin="0,0,0,2"
-                    Cursor="Hand" MouseLeftButtonDown="OnDeviceItemClicked">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource Opacity1ABrush}"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <Grid>
+                <!-- 顶栏 -->
+                <Grid Grid.Row="0" Height="46" Background="Transparent" MouseLeftButtonDown="OnHeaderMouseDown">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Ellipse Grid.Column="0" Width="6" Height="6" Fill="{StaticResource PrimaryBrush}"
-                             VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock Grid.Column="1" Text="{Binding DeviceName}" FontSize="12" Foreground="White"
-                               VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" FontSize="10" Foreground="{StaticResource Opacity4DBrush}"
-                               VerticalAlignment="Center">
-                        <TextBlock.Text><Binding Path="SignalStrength" StringFormat="{}{0} dBm"/></TextBlock.Text>
-                    </TextBlock>
+
+                    <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="&#x2665;" FontFamily="Segoe UI Symbol" FontSize="17"
+                                   Foreground="{DynamicResource Brush.Accent}" VerticalAlignment="Center"/>
+                        <TextBlock Text="心率监控" Style="{StaticResource Text.Label}" FontWeight="SemiBold"
+                                   Margin="7,0,0,0" VerticalAlignment="Center"/>
+                        <Ellipse Width="7" Height="7" Margin="10,0,5,0" VerticalAlignment="Center">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="{DynamicResource Brush.TextMuted}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ConnectionState}" Value="{x:Static core:ConnectionState.Connected}">
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Success}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ConnectionState}" Value="{x:Static core:ConnectionState.Connecting}">
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Warning}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ConnectionState}" Value="{x:Static core:ConnectionState.Scanning}">
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Warning}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ConnectionState}" Value="{x:Static core:ConnectionState.Reconnecting}">
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Warning}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                        <TextBlock Text="{Binding ConnectionLabel}" Style="{StaticResource Text.Caption}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <Button Style="{StaticResource Button.Icon}" ToolTip="添加组件"
+                                Command="{Binding ToggleAddPanelCommand}">
+                            <TextBlock Text="&#xE710;" Style="{StaticResource IconText}" FontSize="14"/>
+                        </Button>
+                        <Button Style="{StaticResource Button.Icon}" ToolTip="编辑看板" Margin="2,0,0,0"
+                                Command="{Binding ToggleEditModeCommand}">
+                            <Button.Resources>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource IconText}">
+                                    <Setter Property="FontSize" Value="14"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Resources>
+                            <TextBlock Text="&#xE70F;"/>
+                        </Button>
+                        <Button Style="{StaticResource Button.Icon}" ToolTip="极简模式" Margin="2,0,0,0"
+                                Command="{Binding ToggleMinimalModeCommand}">
+                            <TextBlock Text="&#xE740;" Style="{StaticResource IconText}" FontSize="14"/>
+                        </Button>
+                        <Button Style="{StaticResource Button.Icon}" ToolTip="设置" Margin="2,0,0,0"
+                                Command="{Binding OpenSettingsCommand}">
+                            <TextBlock Text="&#xE713;" Style="{StaticResource IconText}" FontSize="14"/>
+                        </Button>
+                        <Button Style="{StaticResource Button.Icon}" ToolTip="最小化" Margin="2,0,0,0"
+                                Click="OnMinimizeClick">
+                            <TextBlock Text="&#xE921;" Style="{StaticResource IconText}" FontSize="14"/>
+                        </Button>
+                        <Button Style="{StaticResource Button.Icon}" ToolTip="关闭到托盘" Margin="2,0,0,0"
+                                Click="OnCloseClick">
+                            <TextBlock Text="&#xE8BB;" Style="{StaticResource IconText}" FontSize="14"/>
+                        </Button>
+                    </StackPanel>
                 </Grid>
-            </Border>
-        </DataTemplate>
-    </Window.Resources>
 
-    <Border Style="{StaticResource MainBorder}">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="32"/>    <!-- 标题栏 -->
-                <RowDefinition Height="Auto"/>  <!-- 心率 -->
-                <RowDefinition Height="*"/>     <!-- 图表/面板 -->
-                <RowDefinition Height="Auto"/>  <!-- 标签栏 -->
-            </Grid.RowDefinitions>
+                <!-- 组件看板 -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled" Margin="12,2,12,0">
+                    <Grid>
+                        <ItemsControl ItemsSource="{Binding Tiles}" HorizontalContentAlignment="Stretch">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
 
-            <!-- ===== 标题栏 ===== -->
-            <Grid Grid.Row="0" Margin="12,0,8,0" MouseLeftButtonDown="OnTitleBarMouseDown"
-                  Background="Transparent" Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
-                <Ellipse Width="6" Height="6"
-                         Fill="{Binding ConnectionStatus, Converter={StaticResource ConnectionStateToColor}}"
-                         HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding DeviceName}" FontSize="10"
-                           Foreground="{StaticResource Opacity66Brush}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Style="{StaticResource TitleBarButton}" Click="OnMinimalModeToggle" ToolTip="极简模式" Width="24" Height="24">
-                        <Path Data="M3,3H21V5H3V3M3,7H15V9H3V7M3,11H21V13H3V11M3,15H15V17H3V15M3,19H21V21H3V19Z"
-                              Fill="{StaticResource Opacity66Brush}" Width="12" Height="12"/>
-                    </Button>
-                    <Button Style="{StaticResource TitleBarButton}" Click="OnMinimizeClick" ToolTip="最小化" Width="24" Height="24">
-                        <Path Data="M20,14H4V10H20" Fill="{StaticResource Opacity66Brush}" Width="12" Height="12"/>
-                    </Button>
-                    <Button Style="{StaticResource TitleBarButton}" Click="OnCloseClick" ToolTip="关闭" Width="24" Height="24">
-                        <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
-                              Fill="{StaticResource DangerBrush}" Width="12" Height="12"/>
-                    </Button>
-                </StackPanel>
-            </Grid>
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Path Data="{Binding IconGeometry}" Width="14" Height="14"
+                                                      Stretch="Uniform" VerticalAlignment="Center"
+                                                      Fill="{DynamicResource Brush.Accent}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}"
+                                                           Style="{StaticResource Text.Label}" FontWeight="SemiBold"
+                                                           Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding PluginName}" Style="{StaticResource Text.Caption}"
+                                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                    <Button ToolTip="移除组件" Width="24" Height="24"
+                                                            Command="{Binding DataContext.RemoveWidgetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource Button.Icon.Danger}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Setter Property="Width" Value="24"/>
+                                                                <Setter Property="Height" Value="24"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                        <TextBlock Text="&#xE74D;" Style="{StaticResource IconText}" FontSize="12"/>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
 
-            <!-- 极简模式拖拽 -->
-            <Grid Grid.Row="0" Background="Transparent"
-                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}}"
-                  MouseLeftButtonDown="OnMinimalAreaMouseDown" Cursor="SizeAll"/>
+                                            <ContentPresenter Grid.Row="1" Content="{Binding View}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-            <!-- ===== 心率显示 ===== -->
-            <Grid Grid.Row="1" Margin="0,4,0,2" Cursor="Hand" MouseLeftButtonDown="OnBpmAreaClick">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Path x:Name="HeartIcon"
-                          Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"
-                          Fill="{StaticResource DangerBrush}" Width="32" Height="32" VerticalAlignment="Center" Margin="0,0,6,0">
-                        <Path.Effect>
-                            <DropShadowEffect Color="#FF4466" BlurRadius="16" ShadowDepth="0" Opacity="0.4"/>
-                        </Path.Effect>
-                        <Path.RenderTransform>
-                            <ScaleTransform x:Name="HeartScaleTransform" CenterX="16" CenterY="16"/>
-                        </Path.RenderTransform>
-                    </Path>
-                    <TextBlock Text="{Binding BpmText}"
-                               Foreground="{Binding CurrentHeartRate, Converter={StaticResource HeartRateToColor}}"
-                               FontSize="24" FontWeight="Bold" FontFamily="Segoe UI Light"
-                               VerticalAlignment="Center" Margin="0,-2,0,0"/>
-                </StackPanel>
-            </Grid>
+                        <!-- 空态 -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,26"
+                                    Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="还没有组件" Style="{StaticResource Text.Label}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="点击右上角 ＋ 从组件库添加" Style="{StaticResource Text.Caption}"
+                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
 
-            <!-- ===== 内容区（图表 / 面板） ===== -->
-            <Grid Grid.Row="2" Margin="8,2,8,0"
-                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
-
-                <!-- 心率图表（含左侧 min/max） -->
-                <Border x:Name="ChartBorder" CornerRadius="6" Background="{StaticResource Opacity0ABrush}"
-                        HorizontalAlignment="Center" VerticalAlignment="Top" Width="220">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsDevicePanelOpen}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsSettingsPanelOpen}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
+                <!-- 底栏 -->
+                <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
+                        Padding="14,8">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-
-                        <!-- 左侧 min/max 标注 -->
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="6,0,4,0">
-                            <TextBlock Text="{Binding MaxHeartRate, StringFormat='{}{0}'}"
-                                       Foreground="{StaticResource Opacity66Brush}" FontSize="9"
-                                       HorizontalAlignment="Right"/>
-                            <Border Height="1" Background="{StaticResource Opacity1ABrush}" Margin="0,8,0,8"/>
-                            <TextBlock Text="{Binding MinHeartRate, StringFormat='{}{0}'}"
-                                       Foreground="{StaticResource Opacity66Brush}" FontSize="9"
-                                       HorizontalAlignment="Right"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="本次会话 " Style="{StaticResource Text.Caption}"/>
+                            <TextBlock Text="{Binding SessionDurationText}" Style="{StaticResource Text.Caption}"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text=" · " Style="{StaticResource Text.Caption}"/>
+                            <TextBlock Text="{Binding DeviceName}" Style="{StaticResource Text.Caption}"
+                                       TextTrimming="CharacterEllipsis" MaxWidth="130"/>
                         </StackPanel>
-
-                        <!-- 图表 -->
-                        <lvc:CartesianChart Grid.Column="1"
-                                            Series="{Binding HeartRateSeries}"
-                                            XAxes="{Binding XAxes}"
-                                            YAxes="{Binding YAxes}"
-                                            AnimationsSpeed="00:00:00.150"
-                                            Height="60"/>
-                    </Grid>
-                </Border>
-
-                <!-- 设备面板 -->
-                <Border CornerRadius="6" Background="{StaticResource BackgroundBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                        Visibility="{Binding IsDevicePanelOpen, Converter={StaticResource BoolToVisibility}}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Margin="10,8,10,6">
-                            <TextBlock Text="{Binding ScanStatusText}" FontSize="11"
-                                       Foreground="{StaticResource Opacity66Brush}" VerticalAlignment="Center"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="扫描" Click="OnScanClick" Style="{StaticResource TabButton}"
-                                        Background="{StaticResource PrimaryBrush}" Foreground="White"/>
-                                <Button Content="断开" Click="OnDisconnectClick" Style="{StaticResource TabButton}"
-                                        Margin="4,0,0,0" Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisibility}}"/>
+                        <Button Grid.Column="1" Style="{StaticResource Button.Link}"
+                                Command="{Binding ToggleAddPanelCommand}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" Style="{StaticResource IconText}" FontSize="11"/>
+                                <TextBlock Text="添加组件" Style="{StaticResource Text.Caption}" Margin="5,0,0,0"/>
                             </StackPanel>
-                        </Grid>
-                        <Border Grid.Row="1" Margin="6,0,6,6" CornerRadius="4" Background="{StaticResource Opacity0ABrush}">
-                            <ListBox ItemsSource="{Binding DiscoveredDevices}" Background="Transparent"
-                                     Foreground="White" BorderThickness="0" Padding="4,2"
-                                     ItemTemplate="{StaticResource DeviceItemTemplate}"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                     Style="{StaticResource ThemedListBox}"/>
-                        </Border>
+                        </Button>
                     </Grid>
                 </Border>
 
-                <!-- 设置面板 -->
-                <Border CornerRadius="6" Background="{StaticResource BackgroundBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                        Visibility="{Binding IsSettingsPanelOpen, Converter={StaticResource BoolToVisibility}}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
-                                      Style="{StaticResource ThemedScrollViewer}">
-                            <StackPanel Margin="12,6">
-                                <TextBlock Text="连接" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
-                                <Grid Margin="0,0,0,10">
-                                    <TextBlock Text="自动连接" Style="{StaticResource SettingLabel}"/>
-                                    <CheckBox Style="{StaticResource MiniToggleSwitch}" IsChecked="{Binding AutoConnect}"
-                                              HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
+                <!-- 组件库抽屉 -->
+                <Grid Grid.RowSpan="3" Background="{DynamicResource Brush.Overlay}"
+                      Visibility="{Binding IsAddPanelOpen, Converter={StaticResource BoolToVisibility}}">
+                    <Border Style="{StaticResource Card}" Margin="14" Padding="14"
+                            VerticalAlignment="Top" MaxHeight="520">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="组件库" Style="{StaticResource Text.H2}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Style="{StaticResource Button.Icon}" Width="26" Height="26"
+                                        ToolTip="关闭" Command="{Binding CloseAddPanelCommand}">
+                                    <TextBlock Text="&#xE8BB;" Style="{StaticResource IconText}" FontSize="12"/>
+                                </Button>
+                            </Grid>
 
-                                <Border Style="{StaticResource SectionSeparator}"/>
-                                <TextBlock Text="心率" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
-                                <Grid Margin="0,0,0,6">
-                                    <TextBlock Text="通知提醒" Style="{StaticResource SettingLabel}"/>
-                                    <CheckBox Style="{StaticResource MiniToggleSwitch}" IsChecked="{Binding EnableNotifications}"
-                                              HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <Grid>
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding AvailableWidgets}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Style="{StaticResource Button.Ghost}" Margin="0,0,0,6"
+                                                            Padding="10,8" HorizontalContentAlignment="Stretch"
+                                                            Command="{Binding DataContext.AddWidgetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Path Data="{Binding Icon, Converter={StaticResource IconKeyToGeometry}}"
+                                                                  Width="15" Height="15" Stretch="Uniform"
+                                                                  VerticalAlignment="Center"
+                                                                  Fill="{DynamicResource Brush.Accent}"/>
+                                                            <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Label}"
+                                                                           FontWeight="SemiBold"/>
+                                                                <TextBlock Text="{Binding Description}"
+                                                                           Style="{StaticResource Text.Caption}"
+                                                                           TextWrapping="Wrap" MaxWidth="220"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="所有组件都可移除，可在设置 → 功能插件中停用或加载更多插件。"
+                                                   Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="2,6,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock Text="组件库已全部添加到看板"
+                                               Margin="2,4,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding AvailableWidgets.Count}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </Grid>
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="50"/></Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="上限" Style="{StaticResource SettingLabel}"/>
-                                    <TextBox Grid.Column="1" Style="{StaticResource MiniInputTextBox}"
-                                             Text="{Binding HighHeartRateThreshold, UpdateSourceTrigger=PropertyChanged}"/>
-                                </Grid>
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="50"/></Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="下限" Style="{StaticResource SettingLabel}"/>
-                                    <TextBox Grid.Column="1" Style="{StaticResource MiniInputTextBox}"
-                                             Text="{Binding LowHeartRateThreshold, UpdateSourceTrigger=PropertyChanged}"/>
-                                </Grid>
-
-                                <Border Style="{StaticResource SectionSeparator}"/>
-                                <TextBlock Text="外观" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
-                                <Grid Margin="0,0,0,4">
-                                    <TextBlock Text="不透明度" Style="{StaticResource SettingLabel}"/>
-                                    <TextBlock Text="{Binding OverlayOpacity, StringFormat={}{0:P0}}"
-                                               Foreground="{StaticResource Opacity66Brush}" FontSize="10"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
-                                <Slider Style="{StaticResource SliderStyle}" Minimum="0.3" Maximum="1.0"
-                                        Value="{Binding OverlayOpacity, UpdateSourceTrigger=PropertyChanged}"
-                                        TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,0,0,10"/>
-
-                                <Border Style="{StaticResource SectionSeparator}"/>
-                                <TextBlock Text="系统" Style="{StaticResource SectionTitle}" Margin="0,0,0,4"/>
-                                <Grid Margin="0,0,0,6">
-                                    <TextBlock Text="最小化到托盘" Style="{StaticResource SettingLabel}"/>
-                                    <CheckBox Style="{StaticResource MiniToggleSwitch}" IsChecked="{Binding MinimizeToTray}"
-                                              HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
-                            </StackPanel>
-                        </ScrollViewer>
-                        <Grid Grid.Row="1" Margin="10,4,10,8">
-                            <Button Content="恢复默认" Click="OnResetSettings" Style="{StaticResource TabButton}" HorizontalAlignment="Left"/>
-                            <Button Content="保存" Click="OnSaveSettings" Style="{StaticResource TabButton}"
-                                    Background="{StaticResource PrimaryBrush}" Foreground="White" HorizontalAlignment="Right"/>
+                            </ScrollViewer>
                         </Grid>
-                    </Grid>
-                </Border>
+                    </Border>
+                </Grid>
             </Grid>
 
-            <!-- ===== 底部标签栏 ===== -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,4"
-                        Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
-                <Button Style="{StaticResource TabButton}" Click="OnHeartRateTabClick" Margin="0,0,2,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Data="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"
-                              Fill="{StaticResource Opacity4DBrush}" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <TextBlock Text="心率" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                <Button Style="{StaticResource TabButton}" Click="OnDeviceTabClick" Margin="0,0,2,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Data="M17.71,7.71L12,2H11V9.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L11,14.41V22H12L17.71,16.29L13.41,12L17.71,7.71M13,5.83L15.88,8.71L13,11.58V5.83M15.13,14.41L17.71,17.29L15.13,20.17V14.41Z"
-                              Fill="{StaticResource Opacity4DBrush}" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <TextBlock Text="设备" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                <Button Style="{StaticResource TabButton}" Click="OnSettingsTabClick">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Data="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M20.5,18.5L15,13L15,16A1,1 0 0,1 14,17H10A1,1 0 0,1 9,16V13L3.5,18.5L5,20L10,15V17H14V15L19,20L20.5,18.5Z"
-                              Fill="{StaticResource Opacity4DBrush}" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                        <TextBlock Text="设置" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-            </StackPanel>
+            <!-- ===== 极简模式：心跳图标 + 数字（可选曲线）===== -->
+            <Grid x:Name="MinimalView"
+                  Visibility="{Binding IsMinimalMode, Converter={StaticResource BoolToVisibility}}"
+                  Background="Transparent"
+                  MouseLeftButtonDown="OnMinimalMouseLeftButtonDown">
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="显示趋势曲线" IsCheckable="True"
+                                  IsChecked="{Binding MinimalShowChart, Mode=OneWay}"
+                                  Command="{Binding ToggleMinimalChartCommand}"/>
+                        <MenuItem Header="退出极简模式" Command="{Binding ToggleMinimalModeCommand}"/>
+                        <Separator/>
+                        <MenuItem Header="设置" Command="{Binding OpenSettingsCommand}"/>
+                        <MenuItem Header="最小化" Click="OnMinimizeClick"/>
+                        <MenuItem Header="关闭" Click="OnCloseClick"/>
+                    </ContextMenu>
+                </Grid.ContextMenu>
 
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14,14,14,12">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock x:Name="MinimalHeart" Text="&#x2665;" FontFamily="Segoe UI Symbol"
+                                   FontSize="26" Foreground="{DynamicResource Brush.Accent}"
+                                   VerticalAlignment="Center">
+                            <TextBlock.RenderTransform>
+                                <ScaleTransform x:Name="MinimalHeartScale" CenterX="13" CenterY="13"/>
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
+                        <TextBlock Text="{Binding CurrentBpm}" Margin="8,0,4,0" VerticalAlignment="Center"
+                                   FontSize="44" FontWeight="Bold" Foreground="{DynamicResource Brush.Text}"/>
+                        <TextBlock Text="BPM" Style="{StaticResource Text.Caption}"
+                                   VerticalAlignment="Bottom" Margin="0,0,0,11"/>
+                    </StackPanel>
+
+                    <Border HorizontalAlignment="Center" Margin="0,6,0,0" Padding="8,2" CornerRadius="6"
+                            Background="{DynamicResource Brush.AccentSoft}">
+                        <TextBlock Text="{Binding MinimalZoneName}" FontSize="11"
+                                   Foreground="{Binding MinimalZoneColor, Converter={StaticResource HexToBrush}}"/>
+                    </Border>
+
+                    <Grid Margin="0,10,0,0" Width="150" Height="40"
+                          Visibility="{Binding MinimalShowChart, Converter={StaticResource BoolToVisibility}}">
+                        <controls:Sparkline Points="{Binding SessionPoints}"
+                                            LineBrush="{DynamicResource Brush.Accent}"
+                                            FillBrush="{DynamicResource Brush.AccentSoft}"
+                                            MinimumBpm="40" MaximumBpm="200"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>

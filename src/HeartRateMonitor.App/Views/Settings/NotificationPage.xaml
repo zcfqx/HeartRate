@@ -1,0 +1,70 @@
+<UserControl x:Class="HeartRateMonitor.App.Views.Settings.NotificationPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="提醒" Style="{StaticResource Text.H1}" Margin="0,0,0,6"/>
+        <TextBlock Text="心率过高或过低时的提醒方式与阈值。" Style="{StaticResource Text.Caption}" Margin="0,0,0,16"/>
+
+        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="提醒方式" Style="{StaticResource Text.H2}" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="心率提醒" Style="{StaticResource Text.Label}"/>
+                        <TextBlock Text="超过阈值时在主窗口显示提醒。" Style="{StaticResource Text.Caption}"/>
+                    </StackPanel>
+                    <ToggleButton Grid.Column="1" Style="{StaticResource Switch}"
+                                  IsChecked="{Binding EnableNotifications}" VerticalAlignment="Center"/>
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="声音提醒" Style="{StaticResource Text.Label}"/>
+                        <TextBlock Text="触发提醒时同时播放提示音。" Style="{StaticResource Text.Caption}"/>
+                    </StackPanel>
+                    <ToggleButton Grid.Column="1" Style="{StaticResource Switch}"
+                                  IsChecked="{Binding EnableSoundAlert}" VerticalAlignment="Center"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="阈值" Style="{StaticResource Text.H2}" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="高心率阈值" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                               Text="{Binding HighHeartRateThreshold, StringFormat={}{0:F0} bpm}"/>
+                </Grid>
+                <Slider Minimum="100" Maximum="220" SmallChange="1" LargeChange="5"
+                        Value="{Binding HighHeartRateThreshold}" Margin="0,0,0,14"/>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="低心率阈值" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                               Text="{Binding LowHeartRateThreshold, StringFormat={}{0:F0} bpm}"/>
+                </Grid>
+                <Slider Minimum="30" Maximum="100" SmallChange="1" LargeChange="5"
+                        Value="{Binding LowHeartRateThreshold}"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

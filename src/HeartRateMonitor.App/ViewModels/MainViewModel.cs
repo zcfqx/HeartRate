@@ -1,634 +1,411 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LiveChartsCore;
-using LiveChartsCore.Defaults;
-using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.Painting;
-using SkiaSharp;
+using HeartRateMonitor.App.Extensibility;
 using HeartRateMonitor.Core.Enums;
 using HeartRateMonitor.Core.Events;
 using HeartRateMonitor.Core.Interfaces;
 using HeartRateMonitor.Core.Models;
+using HeartRateMonitor.Extensibility;
 
 namespace HeartRateMonitor.App.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+/// <summary>
+/// 主窗口 ViewModel：管理组件看板（增删组件）、连接状态与插件同步。
+/// 看板内容完全由插件贡献，布局以组件 Id 列表持久化在设置里。
+/// </summary>
+public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
-    private const string ZoneColorRest = "#6366F1";
-    private const string ZoneColorFatBurn = "#22C55E";
-    private const string ZoneColorCardio = "#F59E0B";
-    private const string ZoneColorPeak = "#F97316";
-    private const string ZoneColorMax = "#EF4444";
-
-    private readonly IHeartRateService _heartRateService;
-    private readonly IBleService _bleService;
-    private readonly ISettingsService _settingsService;
-    private readonly ILogger _logger;
-
-    private readonly Dispatcher _dispatcher;
-    private readonly ObservableCollection<DateTimePoint> _heartRateValues = new();
-    private readonly ObservableCollection<DateTimePoint> _rrValues = new();
-
-    private int _runningMin = int.MaxValue;
-    private int _runningMax = int.MinValue;
-    private double _runningSum;
-    private int _runningCount;
-
-    // ==================== 心率数据 ====================
+    private readonly IPluginHost _plugins;
+    private readonly PluginContextFactory _contexts;
+    private readonly ISettingsService _settings;
+    private readonly IHeartRateSession _session;
+    private readonly IBleService _ble;
+    private readonly IDialogService _dialogs;
+    private readonly ILogger _log;
+    private readonly DispatcherTimer _timer;
+    private bool _disposed;
 
     [ObservableProperty]
-    private int _currentHeartRate;
+    private bool _isEditMode;
 
     [ObservableProperty]
-    private int _minHeartRate;
+    private bool _isAddPanelOpen;
 
     [ObservableProperty]
-    private int _maxHeartRate;
-
-    [ObservableProperty]
-    private double _avgHeartRate;
-
-    [ObservableProperty]
-    private string _rrInterval = "0 ms";
-
-    [ObservableProperty]
-    private string _connectionStatus = "未连接";
-
-    [ObservableProperty]
-    private string _connectionStatusIcon = "未连接";
-
-    [ObservableProperty]
-    private string _signalStrength = "无";
-
-    [ObservableProperty]
-    private string _lastUpdate = "00:00:00";
-
-    [ObservableProperty]
-    private string _heartRateZone = "静息";
-
-    [ObservableProperty]
-    private string _zoneColor = ZoneColorRest;
-
-    [ObservableProperty]
-    private bool _isSensorContact;
-
-    [ObservableProperty]
-    private double _avgRrInterval;
+    private bool _isEmpty;
 
     [ObservableProperty]
     private bool _isConnected;
 
     [ObservableProperty]
-    private bool _isScanning;
+    private string _connectionLabel = "未连接";
 
     [ObservableProperty]
-    private string _scanStatusText = "未扫描";
+    private string _deviceName = "未连接设备";
 
+    [ObservableProperty]
+    private string _sessionDurationText = "00:00";
+
+    [ObservableProperty]
+    private string _pluginText = string.Empty;
+
+    [ObservableProperty]
+    private ConnectionState _connectionState = ConnectionState.Disconnected;
+
+    /// <summary>极简模式：只显示心跳图标与数字（可选曲线），隐藏顶栏、看板与底栏。</summary>
     [ObservableProperty]
     private bool _isMinimalMode;
 
+    /// <summary>极简模式下是否显示趋势曲线。</summary>
     [ObservableProperty]
-    private string _bpmText = "---";
-
-    [ObservableProperty]
-    private string _deviceName = "";
+    private bool _minimalShowChart = true;
 
     [ObservableProperty]
-    private double _overlayOpacity = 0.7;
+    private int _currentBpm;
 
     [ObservableProperty]
-    private BleDevice? _connectedDevice;
+    private string _minimalZoneName = "等待连接设备";
 
     [ObservableProperty]
-    private ObservableCollection<BleDevice> _discoveredDevices = new();
+    private string _minimalZoneColor = "#6366F1";
 
-    // ==================== 面板状态 ====================
+    /// <summary>极简模式趋势图数据（随心跳刷新）。</summary>
+    public IReadOnlyList<HeartRatePoint> SessionPoints => _session.Points;
 
-    [ObservableProperty]
-    private string _activePanel = "None"; // None, Device, Settings
+    /// <summary>看板上的组件实例（顺序即布局顺序）。</summary>
+    public ObservableCollection<WidgetTileViewModel> Tiles { get; } = [];
 
-    [ObservableProperty]
-    private bool _isDevicePanelOpen;
-
-    [ObservableProperty]
-    private bool _isSettingsPanelOpen;
-
-    [ObservableProperty]
-    private bool _isHeartRatePanelOpen = true;
-
-    // ==================== 设置属性 ====================
-
-    [ObservableProperty]
-    private bool _autoConnect = true;
-
-    [ObservableProperty]
-    private int _highHeartRateThreshold = 160;
-
-    [ObservableProperty]
-    private int _lowHeartRateThreshold = 50;
-
-    [ObservableProperty]
-    private bool _enableNotifications = true;
-
-    [ObservableProperty]
-    private bool _enableSoundAlert;
-
-    [ObservableProperty]
-    private bool _startWithWindows;
-
-    [ObservableProperty]
-    private bool _minimizeToTray = true;
-
-    [ObservableProperty]
-    private int _dataRetentionDays = 30;
-
-    // ==================== 图表 ====================
-
-    public ISeries[] HeartRateSeries { get; }
-    public ISeries[] RrSeries { get; }
-
-    public Axis[] XAxes { get; } =
-    {
-        new Axis
-        {
-            IsVisible = false
-        }
-    };
-
-    public Axis[] YAxes { get; } =
-    {
-        new Axis
-        {
-            IsVisible = false,
-            MinLimit = 40,
-            MaxLimit = 120
-        }
-    };
+    /// <summary>组件库里尚未添加到看板的组件。</summary>
+    public ObservableCollection<WidgetDescriptor> AvailableWidgets { get; } = [];
 
     public MainViewModel(
-        IHeartRateService heartRateService,
-        IBleService bleService,
-        ISettingsService settingsService,
-        ILogger logger)
+        IPluginHost plugins,
+        PluginContextFactory contexts,
+        ISettingsService settings,
+        IHeartRateSession session,
+        IBleService ble,
+        IDialogService dialogs,
+        ILogger log)
     {
-        _heartRateService = heartRateService;
-        _bleService = bleService;
-        _settingsService = settingsService;
-        _logger = logger;
+        _plugins = plugins;
+        _contexts = contexts;
+        _settings = settings;
+        _session = session;
+        _ble = ble;
+        _dialogs = dialogs;
+        _log = log;
 
-        _dispatcher = Dispatcher.CurrentDispatcher;
-
-        HeartRateSeries = new ISeries[]
+        _timer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            new LineSeries<DateTimePoint>
-            {
-                Values = _heartRateValues,
-                Fill = null,
-                Stroke = new SolidColorPaint(SKColors.CornflowerBlue, 2),
-                GeometryStroke = null,
-                GeometryFill = null,
-                LineSmoothness = 0.5
-            }
+            Interval = TimeSpan.FromSeconds(1)
         };
+        _timer.Tick += OnTimerTick;
+        _timer.Start();
 
-        RrSeries = new ISeries[]
-        {
-            new LineSeries<DateTimePoint>
-            {
-                Values = _rrValues,
-                Fill = null,
-                Stroke = new SolidColorPaint(SKColors.MediumPurple, (float)1.5),
-                GeometryStroke = null,
-                GeometryFill = null,
-                LineSmoothness = 0.3
-            }
-        };
+        _plugins.PluginsChanged += OnPluginsChanged;
+        _ble.ConnectionStateChanged += OnConnectionStateChanged;
+        _session.SessionReset += OnSessionReset;
+        _session.SampleReceived += OnSampleReceived;
+        _settings.SettingsChanged += OnSettingsChanged;
 
-        _bleService.HeartRateReceived += OnHeartRateReceived;
-        _bleService.ConnectionStateChanged += OnConnectionStateChanged;
-        _bleService.DeviceDiscovered += OnDeviceDiscovered;
-        _settingsService.SettingsChanged += OnSettingsChanged;
+        IsMinimalMode = _settings.MinimalMode;
+        MinimalShowChart = _settings.MinimalShowChart;
 
-        OverlayOpacity = _settingsService.OverlayOpacity;
-        IsMinimalMode = _settingsService.MinimalMode;
-        LoadSettingsFromService();
-
-        _ = LoadDeviceInfoAsync();
+        UpdateConnection(_ble.State, _ble.ConnectedDevice?.DeviceName);
+        RefreshLayout();
+        ApplyMinimalState();
     }
 
-    // ==================== 设备发现 ====================
-
-    private void OnDeviceDiscovered(object? sender, BleDevice device)
-    {
-        _dispatcher.Invoke(() =>
-        {
-            if (DiscoveredDevices.All(d => d.DeviceId != device.DeviceId))
-            {
-                DiscoveredDevices.Add(device);
-            }
-        });
-    }
-
-    // ==================== 面板切换 ====================
+    // === 命令 ===
 
     [RelayCommand]
-    private void ToggleDevicePanel()
+    private void ToggleEditMode()
     {
-        if (ActivePanel == "Device")
+        IsEditMode = !IsEditMode;
+        if (!IsEditMode)
         {
-            ActivePanel = "None";
-            IsDevicePanelOpen = false;
-            IsHeartRatePanelOpen = true;
-        }
-        else
-        {
-            ActivePanel = "Device";
-            IsDevicePanelOpen = true;
-            IsSettingsPanelOpen = false;
-            IsHeartRatePanelOpen = false;
+            IsAddPanelOpen = false;
         }
     }
 
     [RelayCommand]
-    private void ToggleSettingsPanel()
+    private void ToggleAddPanel() => IsAddPanelOpen = !IsAddPanelOpen;
+
+    [RelayCommand]
+    private void CloseAddPanel() => IsAddPanelOpen = false;
+
+    [RelayCommand]
+    private void AddWidget(WidgetDescriptor? descriptor)
     {
-        if (ActivePanel == "Settings")
+        if (descriptor is null)
         {
-            ActivePanel = "None";
-            IsSettingsPanelOpen = false;
-            IsHeartRatePanelOpen = true;
+            return;
         }
-        else
+
+        if (Tiles.Any(t => string.Equals(t.Descriptor.Id, descriptor.Id, StringComparison.OrdinalIgnoreCase)))
         {
-            ActivePanel = "Settings";
-            IsSettingsPanelOpen = true;
-            IsDevicePanelOpen = false;
-            IsHeartRatePanelOpen = false;
+            IsAddPanelOpen = false;
+            return;
         }
+
+        Tiles.Add(CreateTile(descriptor));
+        SyncCollections();
+        IsAddPanelOpen = false;
+        PersistLayout();
     }
 
     [RelayCommand]
-    private void ShowHeartRatePanel()
+    private void RemoveWidget(WidgetTileViewModel? tile)
     {
-        ActivePanel = "None";
-        IsDevicePanelOpen = false;
-        IsSettingsPanelOpen = false;
-        IsHeartRatePanelOpen = true;
+        if (tile is null)
+        {
+            return;
+        }
+
+        RemoveById(tile.Descriptor.Id);
     }
 
-    // ==================== 极简模式 ====================
+    [RelayCommand]
+    private void OpenSettings() => _dialogs.ShowSettingsDialog();
+
+    [RelayCommand]
+    private void StartNewSession() => _session.Reset();
 
     [RelayCommand]
     private void ToggleMinimalMode()
     {
         IsMinimalMode = !IsMinimalMode;
+        _settings.MinimalMode = IsMinimalMode;
+        _ = SaveSettingsAsync();
     }
-
-    partial void OnIsMinimalModeChanged(bool value)
-    {
-        _settingsService.MinimalMode = value;
-        _ = _settingsService.SaveAsync();
-    }
-
-    // ==================== 扫描 ====================
 
     [RelayCommand]
-    private async Task ToggleScanAsync()
+    private void ToggleMinimalChart()
     {
-        if (IsScanning)
-        {
-            await StopScanAsync();
-        }
-        else
-        {
-            await StartScanAsync();
-        }
+        MinimalShowChart = !MinimalShowChart;
+        _settings.MinimalShowChart = MinimalShowChart;
+        _ = SaveSettingsAsync();
     }
 
-    private async Task StartScanAsync()
+    // === 布局 ===
+
+    private WidgetTileViewModel CreateTile(WidgetDescriptor descriptor)
     {
-        try
-        {
-            DiscoveredDevices.Clear();
-            ScanStatusText = "扫描中...";
-            await _bleService.StartScanningAsync();
-            IsScanning = true;
-            ScanStatusText = "扫描中...";
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("启动扫描失败", ex);
-            IsScanning = false;
-            ScanStatusText = $"扫描失败: {ex.Message}";
-            UpdateState(ConnectionState.Disconnected);
-        }
+        var context = (IWidgetContext)_contexts.Create(descriptor.PluginId, () => RemoveById(descriptor.Id));
+        var view = descriptor.CreateView(context);
+        var pluginName = _plugins.Plugins.FirstOrDefault(p => p.Id == descriptor.PluginId)?.Name ?? "插件";
+        return new WidgetTileViewModel(descriptor, view, pluginName);
     }
 
-    private async Task StopScanAsync()
+    private void RefreshLayout()
     {
-        try
+        var widgets = _plugins.Widgets;
+        var defaults = widgets.Where(w => w.DefaultEnabled).Select(w => w.Id);
+        var ids = WidgetLayoutCodec.Parse(_settings.Widgets, defaults);
+
+        Tiles.Clear();
+        foreach (var id in ids)
         {
-            await _bleService.StopScanningAsync();
-            IsScanning = false;
-            ScanStatusText = "已停止";
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("停止扫描失败", ex);
-            ScanStatusText = $"停止失败: {ex.Message}";
-        }
-    }
-
-    // ==================== 连接 ====================
-
-    [RelayCommand]
-    public async Task ConnectAsync(BleDevice? device)
-    {
-        if (device == null) return;
-
-        try
-        {
-            await StopScanAsync();
-
-            _logger.Info($"正在连接设备: {device.DeviceName}");
-            await _bleService.ConnectAsync(device);
-
-            _settingsService.LastDeviceId = device.DeviceId;
-            await _settingsService.SaveAsync();
-
-            // 连接成功后关闭设备面板
-            _dispatcher.Invoke(() =>
+            var descriptor = widgets.FirstOrDefault(w => string.Equals(w.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (descriptor is not null)
             {
-                ActivePanel = "None";
-                IsDevicePanelOpen = false;
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("连接设备失败", ex);
-        }
-    }
-
-    [RelayCommand]
-    private async Task DisconnectAsync()
-    {
-        try
-        {
-            await _bleService.DisconnectAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("断开连接失败", ex);
-        }
-    }
-
-    // ==================== 心率数据处理 ====================
-
-    private void OnHeartRateReceived(object? sender, HeartRateChangedEventArgs e)
-    {
-        var data = e.Data;
-
-        _runningMin = Math.Min(_runningMin, data.HeartRate);
-        _runningMax = Math.Max(_runningMax, data.HeartRate);
-        _runningSum += data.HeartRate;
-        _runningCount++;
-
-        _dispatcher.Invoke(() =>
-        {
-            CurrentHeartRate = data.HeartRate;
-            BpmText = data.HeartRate.ToString();
-            RrInterval = data.RRInterval > 0 ? $"{data.RRInterval:F1} ms" : "0 ms";
-            IsSensorContact = data.IsSensorContact;
-            LastUpdate = data.Timestamp.ToString("HH:mm:ss");
-
-            UpdateZone(data.HeartRate);
-
-            MinHeartRate = _runningMin;
-            MaxHeartRate = _runningMax;
-            AvgHeartRate = _runningCount > 0 ? Math.Round(_runningSum / _runningCount, 1) : 0;
-
-            UpdateChartAxis(data.HeartRate);
-
-            var point = new DateTimePoint(data.Timestamp, data.HeartRate);
-            _heartRateValues.Add(point);
-            if (_heartRateValues.Count > 120)
-                _heartRateValues.RemoveAt(0);
-
-            if (data.RRInterval > 0)
-            {
-                var rrPoint = new DateTimePoint(data.Timestamp, data.RRInterval);
-                _rrValues.Add(rrPoint);
-                if (_rrValues.Count > 60)
-                    _rrValues.RemoveAt(0);
+                Tiles.Add(CreateTile(descriptor));
             }
-        });
-
-        _heartRateService.UpdateHeartRate(e.Data);
-    }
-
-    private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
-    {
-        _dispatcher.Invoke(() => UpdateState(e.State));
-
-        if (e.State == ConnectionState.Connected)
-        {
-            ResetRunningStatistics();
-            _ = LoadDeviceInfoAsync();
         }
+
+        SyncCollections();
     }
 
-    private void ResetRunningStatistics()
+    /// <summary>按布局 Id 列表重建看板（外部设置变化时使用）。</summary>
+    private void ApplyLayout(IReadOnlyList<string> ids)
     {
-        _runningMin = int.MaxValue;
-        _runningMax = int.MinValue;
-        _runningSum = 0;
-        _runningCount = 0;
-    }
-
-    private void UpdateState(ConnectionState state)
-    {
-        ConnectionStatus = state switch
+        foreach (var tile in Tiles)
         {
-            ConnectionState.Disconnected => "未连接",
-            ConnectionState.Scanning => "扫描中...",
-            ConnectionState.Connecting => "连接中...",
-            ConnectionState.Connected => "已连接",
-            ConnectionState.Reconnecting => "重连中...",
-            _ => "未知"
-        };
+            tile.Dispose();
+        }
 
-        ConnectionStatusIcon = state switch
+        Tiles.Clear();
+        foreach (var id in ids)
         {
-            ConnectionState.Disconnected => "未连接",
-            ConnectionState.Scanning => "扫描中",
-            ConnectionState.Connecting => "连接中",
-            ConnectionState.Connected => "已连接",
-            ConnectionState.Reconnecting => "重连中",
-            _ => "未知"
-        };
-
-        IsConnected = state == ConnectionState.Connected;
-        IsScanning = state == ConnectionState.Scanning;
-        ConnectedDevice = _bleService.ConnectedDevice;
-        DeviceName = ConnectedDevice?.DeviceName ?? "";
-        SignalStrength = ConnectedDevice != null ? $"{ConnectedDevice.SignalStrength} dBm" : "无";
-    }
-
-    private void UpdateChartAxis(int heartRate)
-    {
-        var axis = YAxes[0];
-        var min = (int)Math.Floor(Math.Min(_runningMin, heartRate) / 10.0) * 10 - 10;
-        var max = (int)Math.Ceiling(Math.Max(_runningMax, heartRate) / 10.0) * 10 + 10;
-        min = Math.Max(min, 0);
-        max = Math.Max(max, min + 20);
-        axis.MinLimit = min;
-        axis.MaxLimit = max;
-    }
-
-    private void UpdateZone(int heartRate)
-    {
-        (HeartRateZone, ZoneColor) = heartRate switch
-        {
-            < 100 => ("静息", ZoneColorRest),
-            < 140 => ("燃脂", ZoneColorFatBurn),
-            < 170 => ("有氧", ZoneColorCardio),
-            < 200 => ("极限", ZoneColorPeak),
-            _ => ("最大", ZoneColorMax)
-        };
-    }
-
-    private async Task LoadDeviceInfoAsync()
-    {
-        try
-        {
-            var endTime = DateTime.Now;
-            var startTime = endTime.AddHours(-1);
-            var stats = await _heartRateService.GetStatisticsAsync(startTime, endTime);
-
-            _dispatcher.Invoke(() =>
+            var descriptor = _plugins.Widgets.FirstOrDefault(w => string.Equals(w.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (descriptor is not null)
             {
-                MinHeartRate = stats.MinHeartRate;
-                MaxHeartRate = stats.MaxHeartRate;
-                AvgHeartRate = stats.AverageHeartRate;
-            });
-
-            _runningMin = stats.MinHeartRate == 0 ? int.MaxValue : stats.MinHeartRate;
-            _runningMax = stats.MaxHeartRate == 0 ? int.MinValue : stats.MaxHeartRate;
-            _runningSum = 0;
-            _runningCount = 0;
+                Tiles.Add(CreateTile(descriptor));
+            }
         }
-        catch (Exception ex)
+
+        SyncCollections();
+    }
+
+    private void SyncCollections()
+    {
+        AvailableWidgets.Clear();
+        var current = Tiles.Select(t => t.Descriptor.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var descriptor in _plugins.Widgets.Where(w => !current.Contains(w.Id)))
         {
-            _logger.Error("加载设备信息失败", ex);
+            AvailableWidgets.Add(descriptor);
         }
+
+        IsEmpty = Tiles.Count == 0;
+        PluginText = $"{_plugins.Plugins.Count(p => p.IsEnabled)} 个插件 · {_plugins.Widgets.Count} 个组件";
     }
 
-    // ==================== 设置 ====================
-
-    private void LoadSettingsFromService()
+    private void PersistLayout()
     {
-        AutoConnect = _settingsService.AutoConnect;
-        HighHeartRateThreshold = _settingsService.HighHeartRateThreshold;
-        LowHeartRateThreshold = _settingsService.LowHeartRateThreshold;
-        EnableNotifications = _settingsService.EnableNotifications;
-        EnableSoundAlert = _settingsService.EnableSoundAlert;
-        StartWithWindows = _settingsService.StartWithWindows;
-        MinimizeToTray = _settingsService.MinimizeToTray;
-        DataRetentionDays = _settingsService.DataRetentionDays;
+        _settings.Widgets = WidgetLayoutCodec.Serialize(Tiles.Select(t => t.Descriptor.Id));
+        _ = SaveSettingsAsync();
     }
 
-    partial void OnOverlayOpacityChanged(double value)
-    {
-        _settingsService.OverlayOpacity = value;
-        _settingsService.NotifySettingsChanged();
-    }
-
-    partial void OnHighHeartRateThresholdChanged(int value)
-    {
-        if (value < 30) HighHeartRateThreshold = 30;
-        else if (value > 250) HighHeartRateThreshold = 250;
-    }
-
-    partial void OnLowHeartRateThresholdChanged(int value)
-    {
-        if (value < 30) LowHeartRateThreshold = 30;
-        else if (value > 250) LowHeartRateThreshold = 250;
-    }
-
-    partial void OnDataRetentionDaysChanged(int value)
-    {
-        if (value < 1) DataRetentionDays = 1;
-        else if (value > 365) DataRetentionDays = 365;
-    }
-
-    [RelayCommand]
     private async Task SaveSettingsAsync()
     {
         try
         {
-            _settingsService.AutoConnect = AutoConnect;
-            _settingsService.HighHeartRateThreshold = HighHeartRateThreshold;
-            _settingsService.LowHeartRateThreshold = LowHeartRateThreshold;
-            _settingsService.EnableNotifications = EnableNotifications;
-            _settingsService.EnableSoundAlert = EnableSoundAlert;
-            _settingsService.StartWithWindows = StartWithWindows;
-            _settingsService.MinimizeToTray = MinimizeToTray;
-            _settingsService.DataRetentionDays = DataRetentionDays;
-
-            await _settingsService.SaveAsync();
-            _settingsService.NotifySettingsChanged();
-            _logger.Info("设置已保存");
-
-            // 关闭设置面板
-            _dispatcher.Invoke(() =>
-            {
-                ActivePanel = "None";
-                IsSettingsPanelOpen = false;
-            });
+            await _settings.SaveAsync();
         }
         catch (Exception ex)
         {
-            _logger.Error("保存设置失败", ex);
+            _log.Error("保存布局失败", ex);
         }
     }
 
-    [RelayCommand]
-    private void ResetSettings()
+    private void RemoveById(string id)
     {
-        _settingsService.ResetToDefaults();
-        LoadSettingsFromService();
+        var tile = Tiles.FirstOrDefault(t => string.Equals(t.Descriptor.Id, id, StringComparison.OrdinalIgnoreCase));
+        if (tile is null)
+        {
+            return;
+        }
+
+        Tiles.Remove(tile);
+        tile.Dispose();
+        SyncCollections();
+        PersistLayout();
     }
 
-    // ==================== 权限 ====================
+    // === 事件 ===
 
-    [RelayCommand]
-    private async Task RequestPermissionsAsync()
+    private void OnPluginsChanged(object? sender, EventArgs e) => RunOnUi(() =>
     {
-        var granted = await _bleService.RequestPermissionAsync();
-        if (!granted)
+        var widgets = _plugins.Widgets;
+        var defaults = widgets.Where(w => w.DefaultEnabled).Select(w => w.Id);
+        var desired = WidgetLayoutCodec.Parse(_settings.Widgets, defaults);
+        var current = Tiles.Select(t => t.Descriptor.Id).ToList();
+
+        if (!desired.SequenceEqual(current, StringComparer.OrdinalIgnoreCase))
         {
-            _logger.Warning("需要蓝牙权限才能扫描设备");
+            ApplyLayout(desired);
+        }
+        else
+        {
+            SyncCollections();
+        }
+    });
+
+    private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
+        => RunOnUi(() => UpdateConnection(e.State, e.DeviceName));
+
+    private void OnSessionReset(object? sender, EventArgs e) => RunOnUi(UpdateSessionDuration);
+
+    private void OnSampleReceived(object? sender, HeartRateChangedEventArgs e) => RunOnUi(ApplyMinimalState);
+
+    private void OnSettingsChanged(object? sender, EventArgs e) => RunOnUi(() =>
+    {
+        if (IsMinimalMode != _settings.MinimalMode)
+        {
+            IsMinimalMode = _settings.MinimalMode;
+        }
+
+        if (MinimalShowChart != _settings.MinimalShowChart)
+        {
+            MinimalShowChart = _settings.MinimalShowChart;
+        }
+    });
+
+    /// <summary>刷新极简模式的心率数字、区间与曲线数据。</summary>
+    private void ApplyMinimalState()
+    {
+        var latest = _session.Latest;
+        CurrentBpm = latest?.HeartRate ?? 0;
+
+        if (latest is null)
+        {
+            MinimalZoneName = "等待连接设备";
+            MinimalZoneColor = "#6366F1";
+        }
+        else
+        {
+            var zone = HeartRateZones.Classify(latest.HeartRate);
+            MinimalZoneName = zone.Name;
+            MinimalZoneColor = zone.Color;
+        }
+
+        OnPropertyChanged(nameof(SessionPoints));
+    }
+
+    private void OnTimerTick(object? sender, EventArgs e) => UpdateSessionDuration();
+
+    private void UpdateSessionDuration()
+    {
+        var duration = _session.Duration;
+        SessionDurationText = duration.TotalHours >= 1
+            ? duration.ToString(@"h\:mm\:ss")
+            : duration.ToString(@"mm\:ss");
+    }
+
+    private void UpdateConnection(ConnectionState state, string? deviceName)
+    {
+        ConnectionState = state;
+        IsConnected = state is ConnectionState.Connected;
+        DeviceName = string.IsNullOrWhiteSpace(deviceName)
+            ? (_settings.LastDeviceName ?? "未连接设备")
+            : deviceName!;
+        ConnectionLabel = state switch
+        {
+            ConnectionState.Scanning => "扫描中",
+            ConnectionState.Connecting => "连接中",
+            ConnectionState.Connected => "已连接",
+            ConnectionState.Reconnecting => "重连中",
+            _ => "未连接"
+        };
+    }
+
+    private static void RunOnUi(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            action();
+        }
+        else
+        {
+            dispatcher.BeginInvoke(action);
         }
     }
 
-    // ==================== 清理 ====================
-
-    private void OnSettingsChanged(object? sender, EventArgs e)
+    public void Dispose()
     {
-        _dispatcher.Invoke(() =>
+        if (_disposed)
         {
-            OverlayOpacity = _settingsService.OverlayOpacity;
-            IsMinimalMode = _settingsService.MinimalMode;
-        });
-    }
+            return;
+        }
 
-    public void Cleanup()
-    {
-        _bleService.HeartRateReceived -= OnHeartRateReceived;
-        _bleService.ConnectionStateChanged -= OnConnectionStateChanged;
-        _bleService.DeviceDiscovered -= OnDeviceDiscovered;
-        _settingsService.SettingsChanged -= OnSettingsChanged;
+        _disposed = true;
+        _timer.Stop();
+        _timer.Tick -= OnTimerTick;
+        _plugins.PluginsChanged -= OnPluginsChanged;
+        _ble.ConnectionStateChanged -= OnConnectionStateChanged;
+        _session.SessionReset -= OnSessionReset;
+        _session.SampleReceived -= OnSampleReceived;
+        _settings.SettingsChanged -= OnSettingsChanged;
+
+        foreach (var tile in Tiles)
+        {
+            tile.Dispose();
+        }
+
+        Tiles.Clear();
     }
 }

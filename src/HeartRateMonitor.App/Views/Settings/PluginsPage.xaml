@@ -1,0 +1,87 @@
+<UserControl x:Class="HeartRateMonitor.App.Views.Settings.PluginsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="功能插件" Style="{StaticResource Text.H1}" Margin="0,0,0,6"/>
+        <TextBlock Text="{Binding PluginSummary}" Style="{StaticResource Text.Caption}" Margin="0,0,0,16"/>
+
+        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,12">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="重新扫描" Style="{StaticResource Button.Outline}"
+                                Command="{Binding RescanPluginsCommand}" Margin="0,0,8,0"/>
+                        <Button Content="打开插件目录" Style="{StaticResource Button.Ghost}"
+                                Command="{Binding OpenPluginsFolderCommand}"/>
+                    </StackPanel>
+                    <TextBlock Text="已安装插件" Style="{StaticResource Text.H2}" VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <ListBox ItemsSource="{Binding Plugins}" Style="{StaticResource ListBox.Clean}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource Card.Inner}" Margin="0,0,0,8" Padding="12">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Text.H2}"/>
+                                            <TextBlock Text="{Binding Version}" Style="{StaticResource Text.Caption}"
+                                                       Margin="8,2,0,0" VerticalAlignment="Center"/>
+                                            <Border Style="{StaticResource Chip}" Margin="8,0,0,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding SourceText}" Style="{StaticResource Text.Caption}"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" Style="{StaticResource Switch}"
+                                                      IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <TextBlock Grid.Row="1" Text="{Binding Description}"
+                                               Style="{StaticResource Text.Caption}" Margin="0,4,0,8"
+                                               TextWrapping="Wrap"/>
+
+                                    <TextBlock Grid.Row="2" Text="{Binding Error}" Style="{StaticResource Text.Caption}"
+                                               Foreground="{DynamicResource Brush.Danger}" TextWrapping="Wrap"
+                                               Margin="0,0,0,8"
+                                               Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"/>
+
+                                    <StackPanel Grid.Row="3" Orientation="Horizontal">
+                                        <Button Content="重新加载" Style="{StaticResource Button.Link}"
+                                                Command="{Binding ReloadCommand}" Margin="0,0,12,0"/>
+                                        <Button Content="卸载" Style="{StaticResource Button.Link}"
+                                                Foreground="{DynamicResource Brush.Danger}"
+                                                Command="{Binding UninstallCommand}"
+                                                Visibility="{Binding CanUninstall, Converter={StaticResource BoolToVisibility}}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Text="插件放在 %LocalAppData%\HeartRateMonitor\plugins\&lt;插件名&gt;\ 下，内含 plugin.json 与程序集；重新扫描即可加载。"/>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="如何扩展" Style="{StaticResource Text.H2}" Margin="0,0,0,8"/>
+                <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                           Text="每个插件都是一个带 plugin.json 清单的独立程序集，实现 IAppPlugin 接口即可贡献组件、命令与设置页；内置插件（核心显示/设备连接/会话统计/附加组件）与外部插件使用完全相同的 API。"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>HeartRateMonitor.Extensibility</RootNamespace>
+    <Description>心率监控插件契约：插件、组件（Widget）、命令与设置页面的扩展点。</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 只依赖 Core（领域模型/接口），不依赖 Data/Services，保证插件契约稳定且轻量。 -->
+    <ProjectReference Include="..\HeartRateMonitor.Core\HeartRateMonitor.Core.csproj" />
+  </ItemGroup>
+
+</Project>

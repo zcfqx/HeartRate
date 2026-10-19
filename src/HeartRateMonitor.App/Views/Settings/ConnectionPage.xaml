@@ -1,0 +1,61 @@
+<UserControl x:Class="HeartRateMonitor.App.Views.Settings.ConnectionPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="连接" Style="{StaticResource Text.H1}" Margin="0,0,0,6"/>
+        <TextBlock Text="蓝牙心率设备的连接与自动重连。" Style="{StaticResource Text.Caption}" Margin="0,0,0,16"/>
+
+        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="当前状态" Style="{StaticResource Text.H2}" Margin="0,0,0,12"/>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="连接状态" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ConnectionLabel}" Style="{StaticResource Text.Label}"
+                               Foreground="{DynamicResource Brush.Success}" VerticalAlignment="Center"/>
+                </Grid>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="设备" Style="{StaticResource Text.Label}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ConnectedDeviceName}"
+                               Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="260"/>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="重新连接" Style="{StaticResource Button.Primary}"
+                            Command="{Binding ReconnectCommand}" Margin="0,0,8,0"/>
+                    <Button Content="断开连接" Style="{StaticResource Button.Outline}"
+                            Command="{Binding DisconnectCommand}" Margin="0,0,8,0"/>
+                    <Button Content="蓝牙设置" Style="{StaticResource Button.Link}"
+                            Command="{Binding OpenBluetoothSettingsCommand}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="自动连接" Style="{StaticResource Text.H2}" Margin="0,0,0,12"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="启动时自动重连上次设备" Style="{StaticResource Text.Label}"/>
+                        <TextBlock Text="扫描与连接都在设备组件中完成，这里只控制启动时的自动重连。"
+                                   Style="{StaticResource Text.Caption}"/>
+                    </StackPanel>
+                    <ToggleButton Grid.Column="1" Style="{StaticResource Switch}"
+                                  IsChecked="{Binding AutoConnect}" VerticalAlignment="Center"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

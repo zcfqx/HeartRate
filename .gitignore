@@ -39,6 +39,9 @@ Generated_Code/
 ## VS Code
 .vscode/
 
+## 本地发布产物（dotnet publish / scripts/Publish.ps1 生成，不入库）
+publish/
+
 ## OS
 Thumbs.db
 ehthumbs.db

@@ -1,14 +1,21 @@
+using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using HeartRateMonitor.App.Extensibility;
+using HeartRateMonitor.App.Infrastructure;
 using HeartRateMonitor.App.ViewModels;
 using HeartRateMonitor.App.Views;
 using HeartRateMonitor.Core.Interfaces;
 using HeartRateMonitor.Data.Database;
+using HeartRateMonitor.Extensibility;
 using HeartRateMonitor.Data.Repositories;
-using HeartRateMonitor.Services;
 using HeartRateMonitor.Services.BLE;
 using HeartRateMonitor.Services.DataService;
 using HeartRateMonitor.Services.HeartRate;
+using HeartRateMonitor.Services.Logging;
 using HeartRateMonitor.Services.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,12 +23,28 @@ namespace HeartRateMonitor.App;
 
 public partial class App : Application
 {
-    private static ServiceProvider? _serviceProvider;
     private static readonly string LogFile = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "HeartRateMonitor", "startup.log");
 
+    private static ServiceProvider? _serviceProvider;
+    private static MainWindow? _mainWindow;
+    private static TrayIcon? _trayIcon;
+    private const string MutexName = @"Local\HeartRateMonitor.SingleInstance";
+    private const string ActivateEventName = @"Local\HeartRateMonitor.Activate";
+    private const string ActivateAckEventName = @"Local\HeartRateMonitor.ActivateAck";
+    private Mutex? _mutex;
+    private bool _ownsMutex;
+    private EventWaitHandle? _activateEvent;
+    private EventWaitHandle? _activateAckEvent;
+    private Thread? _activationListener;
+    private volatile bool _stopActivationListener;
+    private volatile bool _pendingActivation;
+
     public static IServiceProvider? Services => _serviceProvider;
+
+    /// <summary>应用是否正在真正退出（用于区分“关闭窗口→隐藏到托盘”）。</summary>
+    public static bool IsExiting { get; private set; }
 
     private static void DebugLog(string msg)
     {
@@ -29,16 +52,56 @@ public partial class App : Application
         {
             var dir = Path.GetDirectoryName(LogFile);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
                 Directory.CreateDirectory(dir);
-            File.AppendAllText(LogFile, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
+            }
+
+            // 带进程号：多实例交叠时可以区分是哪一次启动写的日志。
+            File.AppendAllText(
+                LogFile,
+                $"[{DateTime.Now:HH:mm:ss.fff}][pid {Environment.ProcessId}] {msg}\n");
         }
-        catch { }
+        catch
+        {
+            // 启动日志不可写时忽略：日志失败不能让应用启动失败。
+        }
     }
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         DebugLog("OnStartup entered");
+
+        // 单实例：已有实例在运行就通知它显示窗口，本进程直接退出；
+        // 如果已有实例卡死无响应，则结束它并继续启动，避免“一直提示已在运行但不显示界面”。
+        _mutex = new Mutex(true, MutexName, out var createdNew);
+        _ownsMutex = createdNew;
+        if (!createdNew)
+        {
+            DebugLog("Another instance detected, trying to activate it");
+            if (TryActivateExistingInstance())
+            {
+                DebugLog("Existing instance activated, shutting down");
+                Shutdown();
+                return;
+            }
+
+            DebugLog("Existing instance did not respond, trying to take over");
+            if (TryTakeOverStaleInstance())
+            {
+                DebugLog("Stale instance terminated, continuing startup");
+            }
+            else
+            {
+                DebugLog("Another instance is running, shutting down");
+                MessageBox.Show("心率监控已经在运行。", "心率监控", MessageBoxButton.OK, MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+        }
+
+        StartActivationListener();
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
 
         try
         {
@@ -49,50 +112,61 @@ public partial class App : Application
             _serviceProvider = services.BuildServiceProvider();
             DebugLog("Provider built OK");
 
-            DebugLog("Creating logger...");
             var logger = _serviceProvider.GetRequiredService<ILogger>();
             logger.Info("=== 应用启动中 ===");
 
             DebugLog("Initializing DB...");
             var dataService = _serviceProvider.GetRequiredService<IDataService>();
-            dataService.InitializeAsync().GetAwaiter().GetResult();
+            // 放在线程池再同步等待：绝不在 UI 线程上同步等待内部含 WinRT await 的方法，
+            // 否则续体会排到已被阻塞的 Dispatcher 上，界面永久卡死。
+            Task.Run(() => dataService.InitializeAsync()).GetAwaiter().GetResult();
             logger.Info("数据库初始化完成");
 
             DebugLog("Loading settings...");
             var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
-            settingsService.LoadAsync().GetAwaiter().GetResult();
+            Task.Run(() => settingsService.LoadAsync()).GetAwaiter().GetResult();
             logger.Info("设置加载完成");
 
+            DebugLog("Applying theme...");
+            ThemeManager.Apply(settingsService.Theme, settingsService.AccentColor);
+
+            // 提前解析会话服务：保证在蓝牙连接前已完成订阅
+            _serviceProvider.GetRequiredService<IHeartRateSession>();
+
+            DebugLog("Initializing plugins...");
+            var pluginHost = _serviceProvider.GetRequiredService<IPluginHost>();
+            Task.Run(() => pluginHost.InitializeAsync()).GetAwaiter().GetResult();
+            logger.Info($"插件初始化完成：{pluginHost.Plugins.Count} 个插件");
+
+            DebugLog("Creating tray icon...");
+            CreateTrayIcon(logger, settingsService);
+
             DebugLog("Creating MainWindow...");
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            _mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
             DebugLog("Showing MainWindow...");
-            mainWindow.Show();
+            _mainWindow.Show();
             DebugLog("MainWindow shown");
+
+            if (_pendingActivation)
+            {
+                _pendingActivation = false;
+                ShowMainWindow();
+            }
 
             try
             {
                 var bleService = _serviceProvider.GetRequiredService<IBleService>();
-                DebugLog("Requesting BLE permission...");
-                bleService.RequestPermissionAsync().GetAwaiter().GetResult();
-                logger.Info("蓝牙权限已授予");
-
-                if (settingsService.AutoConnect && !string.IsNullOrEmpty(settingsService.LastDeviceId))
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        try { await bleService.AutoReconnectAsync(); }
-                        catch (Exception rex) { logger.Warning($"自动重连失败: {rex.Message}"); }
-                    });
-                }
+                DebugLog("Requesting BLE permission (async, non-blocking)...");
+                _ = InitializeBluetoothAsync(bleService, settingsService, logger);
             }
             catch (Exception bleEx)
             {
-                logger?.Warning($"蓝牙初始化已跳过: {bleEx.Message}");
+                logger.Warning($"蓝牙初始化已跳过: {bleEx.Message}");
                 DebugLog($"BLE init skipped: {bleEx.Message}");
             }
 
             DebugLog("=== Startup Complete ===");
-            logger?.Info("=== 应用已启动 ===");
+            logger.Info("=== 应用已启动 ===");
         }
         catch (Exception ex)
         {
@@ -106,37 +180,510 @@ public partial class App : Application
         }
     }
 
+    /// <summary>监听“再次启动”信号：第二个进程会 Set 激活事件，这里负责把主窗口叫出来。</summary>
+    private void StartActivationListener()
+    {
+        try
+        {
+            _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEventName);
+            _activateAckEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateAckEventName);
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"创建单实例激活事件失败: {ex.Message}");
+            return;
+        }
+
+        _activationListener = new Thread(() =>
+        {
+            while (!_stopActivationListener)
+            {
+                try
+                {
+                    if (!_activateEvent.WaitOne(500))
+                    {
+                        continue;
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+
+                // 先回执，让第二个进程知道本进程还活着（随后它自己退出）。
+                try
+                {
+                    _activateAckEvent.Set();
+                }
+                catch
+                {
+                    // 回执失败不影响显示窗口
+                }
+
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (_mainWindow is null)
+                    {
+                        _pendingActivation = true;
+                        return;
+                    }
+
+                    ShowMainWindow();
+                });
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "HeartRateMonitor.ActivationListener"
+        };
+        _activationListener.Start();
+    }
+
+    /// <summary>通知已有实例显示窗口；收到回执返回 true，超时说明对方可能卡死。</summary>
+    private static bool TryActivateExistingInstance()
+    {
+        try
+        {
+            if (!EventWaitHandle.TryOpenExisting(ActivateEventName, out var activate))
+            {
+                return false;
+            }
+
+            using (activate)
+            {
+                if (!EventWaitHandle.TryOpenExisting(ActivateAckEventName, out var ack))
+                {
+                    // 旧版本没有回执事件，只能认为通知成功。
+                    activate.Set();
+                    return true;
+                }
+
+                using (ack)
+                {
+                    activate.Set();
+                    return ack.WaitOne(TimeSpan.FromSeconds(3));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"激活已有实例失败: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>已有实例持有互斥量却不响应时结束它，然后重新取得互斥量继续启动。</summary>
+    private bool TryTakeOverStaleInstance()
+    {
+        try
+        {
+            var current = Process.GetCurrentProcess();
+
+            // 先只结束同一个可执行文件启动的旧实例；若仍拿不到互斥量，
+            // 再退一步结束同名进程（旧版本/旧发布目录留下的僵尸进程）。
+            KillInstances(current, requireSamePath: true);
+            if (TryAcquireMutexForTakeover())
+            {
+                return true;
+            }
+
+            KillInstances(current, requireSamePath: false);
+            if (TryAcquireMutexForTakeover())
+            {
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"接管旧实例失败: {ex.Message}");
+        }
+
+        return false;
+    }
+
+    /// <summary>结束无响应的心率监控进程；requireSamePath=true 时只结束同一路径的进程。</summary>
+    private static void KillInstances(Process current, bool requireSamePath)
+    {
+        string? currentPath = null;
+        try
+        {
+            currentPath = current.MainModule?.FileName;
+        }
+        catch
+        {
+            // 读不到自身路径时退回按进程名匹配
+        }
+
+        foreach (var process in Process.GetProcessesByName(current.ProcessName))
+        {
+            using (process)
+            {
+                if (process.Id == current.Id)
+                {
+                    continue;
+                }
+
+                if (requireSamePath)
+                {
+                    string? path = null;
+                    try
+                    {
+                        path = process.MainModule?.FileName;
+                    }
+                    catch
+                    {
+                        // 无权读取路径时不结束该进程
+                    }
+
+                    if (path is null || currentPath is null ||
+                        !string.Equals(path, currentPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                }
+
+                DebugLog($"结束无响应的旧实例: pid={process.Id} name={process.ProcessName}");
+                try
+                {
+                    process.Kill();
+                    process.WaitForExit(3000);
+                }
+                catch (Exception ex)
+                {
+                    DebugLog($"结束旧实例失败: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    /// <summary>旧进程退出后重建互斥量并尝试取得所有权。</summary>
+    private bool TryAcquireMutexForTakeover()
+    {
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            try
+            {
+                _mutex?.Dispose();
+            }
+            catch
+            {
+                // 忽略
+            }
+
+            _mutex = new Mutex(true, MutexName, out var createdNew);
+            _ownsMutex = createdNew;
+            if (createdNew)
+            {
+                return true;
+            }
+
+            Thread.Sleep(200);
+        }
+
+        return false;
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        DebugLog($"UNHANDLED: {e.Exception}");
+        try
+        {
+            _serviceProvider?.GetService<ILogger>()?.Error("未处理的界面异常", e.Exception);
+        }
+        catch
+        {
+            // 日志不可用
+        }
+
+        MessageBox.Show($"出现未处理的错误：\n{e.Exception.Message}", "心率监控",
+            MessageBoxButton.OK, MessageBoxImage.Error);
+        e.Handled = true;
+    }
+
+    private static void CreateTrayIcon(ILogger logger, ISettingsService settings)
+    {
+        try
+        {
+            _trayIcon = new TrayIcon("心率监控");
+            _trayIcon.Activated += (_, _) => ShowMainWindow();
+            _trayIcon.DoubleClicked += (_, _) => ShowMainWindow();
+            _trayIcon.MenuFactory = BuildTrayMenu;
+
+            if (!settings.MinimizeToTray)
+            {
+                // 用户关闭了“最小化到托盘”，托盘图标仍保留但提示退出方式
+                logger.Debug("托盘图标已创建（最小化到托盘已关闭）");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.Warning($"创建托盘图标失败: {ex.Message}");
+        }
+    }
+
+    private static ContextMenu BuildTrayMenu()
+    {
+        var menu = new ContextMenu();
+
+        var showItem = new MenuItem { Header = "显示主窗口" };
+        showItem.Click += (_, _) => ShowMainWindow();
+        menu.Items.Add(showItem);
+
+        var settingsItem = new MenuItem { Header = "设置" };
+        settingsItem.Click += (_, _) => OpenSettings();
+        menu.Items.Add(settingsItem);
+
+        var minimalItem = new MenuItem { Header = "极简模式", IsCheckable = true };
+        var mainViewModel = _serviceProvider?.GetService<MainViewModel>();
+        if (mainViewModel is not null)
+        {
+            minimalItem.IsChecked = mainViewModel.IsMinimalMode;
+        }
+
+        minimalItem.Click += (_, _) =>
+        {
+            var viewModel = _serviceProvider?.GetService<MainViewModel>();
+            if (viewModel is null)
+            {
+                return;
+            }
+
+            viewModel.ToggleMinimalModeCommand.Execute(null);
+            minimalItem.IsChecked = viewModel.IsMinimalMode;
+        };
+        menu.Items.Add(minimalItem);
+
+        if (_serviceProvider?.GetService<IPluginHost>() is { Commands.Count: > 0 } pluginHost)
+        {
+            menu.Items.Add(new Separator());
+            var logger = _serviceProvider.GetService<ILogger>();
+            foreach (var command in pluginHost.Commands)
+            {
+                var item = new MenuItem { Header = command.Title };
+                item.Click += async (_, _) =>
+                {
+                    try
+                    {
+                        await command.Execute();
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.Error($"执行插件命令失败: {command.Id}", ex);
+                    }
+                };
+                menu.Items.Add(item);
+            }
+        }
+
+        menu.Items.Add(new Separator());
+        var exitItem = new MenuItem { Header = "退出" };
+        exitItem.Click += (_, _) => ExitApp();
+        menu.Items.Add(exitItem);
+
+        return menu;
+    }
+
+    /// <summary>显示并激活主窗口（托盘与插件都可能调用）。</summary>
+    public static void ShowMainWindow()
+    {
+        var window = _mainWindow;
+        if (window is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!window.IsVisible)
+            {
+                // 窗口若已被关闭，Show() 会抛 InvalidOperationException：
+                // 这里只记录日志，不再弹出错误提示（否则激活路径会变成二次弹窗）。
+                window.Show();
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            DebugLog($"主窗口已关闭，无法再次显示: {ex.Message}");
+            return;
+        }
+
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+
+        window.Activate();
+        window.Topmost = true;
+        window.Topmost = false;
+        window.Focus();
+        DebugLog($"ShowMainWindow: visible={window.IsVisible} state={window.WindowState}");
+    }
+
+    private static void OpenSettings()
+    {
+        try
+        {
+            _serviceProvider?.GetRequiredService<IDialogService>().ShowSettingsDialog();
+        }
+        catch (Exception ex)
+        {
+            _serviceProvider?.GetService<ILogger>()?.Error("打开设置失败", ex);
+        }
+    }
+
+    /// <summary>真正退出应用：先保存设置，再关闭所有窗口并释放资源。</summary>
+    public static void ExitApp()
+    {
+        IsExiting = true;
+
+        try
+        {
+            var settings = _serviceProvider?.GetService<ISettingsService>();
+            if (settings is not null)
+            {
+                Task.Run(() => settings.SaveAsync()).GetAwaiter().GetResult();
+            }
+        }
+        catch
+        {
+            // 保存失败不阻止退出
+        }
+
+        Current?.Shutdown();
+    }
+
+    /// <summary>
+    /// 后台完成蓝牙权限检查与自动重连：不在 UI 线程上同步等待任何异步调用，
+    /// 否则 WinRT 的 await 续体会排队到已被阻塞的 Dispatcher 上，导致整个界面卡死。
+    /// </summary>
+    private static async Task InitializeBluetoothAsync(
+        IBleService bleService,
+        ISettingsService settingsService,
+        ILogger logger)
+    {
+        try
+        {
+            var granted = await bleService.RequestPermissionAsync().ConfigureAwait(false);
+            logger.Info(granted ? "蓝牙权限已授予" : "蓝牙当前不可用，等待用户开启");
+
+            if (granted && settingsService.AutoConnect && !string.IsNullOrEmpty(settingsService.LastDeviceId))
+            {
+                try
+                {
+                    await bleService.AutoReconnectAsync().ConfigureAwait(false);
+                }
+                catch (Exception rex)
+                {
+                    logger.Warning($"自动重连失败: {rex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.Warning($"蓝牙初始化已跳过: {ex.Message}");
+        }
+    }
+
     private static void ConfigureServices(ServiceCollection services)
     {
-        var dbInitializer = new DatabaseInitializer();
-        services.AddSingleton(dbInitializer);
+        services.AddSingleton<DatabaseInitializer>();
         services.AddSingleton<HeartRateRepository>();
         services.AddSingleton<DeviceRepository>();
         services.AddSingleton<SettingsRepository>();
 
-        services.AddSingleton<ILogger, SerilogLogger>();
+        services.AddSingleton<ILogger, FileLogger>();
         services.AddSingleton<IHeartRateParser, HeartRateParser>();
         services.AddSingleton<IHeartRateCalculator, HeartRateCalculator>();
         services.AddSingleton<IBleService, BleService>();
         services.AddSingleton<IHeartRateService, HeartRateService>();
+        services.AddSingleton<IHeartRateSession, HeartRateSession>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDataService, DataService>();
         services.AddSingleton<IDialogService, DialogService>();
 
-        services.AddTransient<MainViewModel>();
-        services.AddTransient<SettingsViewModel>();
-        services.AddTransient<DevicePickerViewModel>();
+        // 插件基础设施
+        services.AddSingleton<PluginContextFactory>();
+        services.AddSingleton<IAppPlugin, CoreWidgetsPlugin>();
+        services.AddSingleton<IAppPlugin, DevicePlugin>();
+        services.AddSingleton<IAppPlugin, SessionPlugin>();
+        services.AddSingleton<IAppPlugin, ExtrasPlugin>();
+        services.AddSingleton<IPluginHost, PluginHost>();
 
+        services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
+        services.AddTransient<SettingsViewModel>();
         services.AddTransient<SettingsWindow>();
-        services.AddTransient<DevicePickerWindow>();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
         DebugLog("OnExit called");
-        (_serviceProvider?.GetService<IBleService>() as IDisposable)?.Dispose();
+        IsExiting = true;
+
+        _stopActivationListener = true;
+        try
+        {
+            _activateEvent?.Set();
+        }
+        catch
+        {
+            // 忽略
+        }
+
+        try
+        {
+            _activationListener?.Join(1000);
+        }
+        catch
+        {
+            // 忽略
+        }
+
+        _activateEvent?.Dispose();
+        _activateAckEvent?.Dispose();
+
+        try
+        {
+            _trayIcon?.Dispose();
+        }
+        catch
+        {
+            // 托盘资源释放失败可忽略
+        }
+
+        try
+        {
+            _serviceProvider?.GetService<MainViewModel>()?.Dispose();
+        }
+        catch
+        {
+            // 忽略
+        }
+
+        try
+        {
+            (_serviceProvider?.GetService<IBleService>() as IDisposable)?.Dispose();
+        }
+        catch
+        {
+            // 忽略
+        }
+
         _serviceProvider?.Dispose();
+
+        if (_ownsMutex)
+        {
+            try
+            {
+                _mutex?.ReleaseMutex();
+            }
+            catch
+            {
+                // 未持有互斥量
+            }
+        }
+
+        _mutex?.Dispose();
         base.OnExit(e);
     }
 }

@@ -18,7 +18,15 @@ public class DatabaseInitializer
             Directory.CreateDirectory(directory);
         }
 
-        _connectionString = $"Data Source={path}";
+        var builder = new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            // 连接池 + 15 秒忙等待：心率数据每秒落库与设置保存并发时不会直接抛 database is locked。
+            Pooling = true,
+            DefaultTimeout = 15
+        };
+        _connectionString = builder.ConnectionString;
     }
 
     public string ConnectionString => _connectionString;
@@ -27,6 +35,11 @@ public class DatabaseInitializer
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
+
+        // WAL 允许读写并发；busy_timeout 让写冲突自动等待而不是立刻失败。
+        var pragma = connection.CreateCommand();
+        pragma.CommandText = "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=15000;";
+        await pragma.ExecuteNonQueryAsync();
 
         var command = connection.CreateCommand();
         command.CommandText = @"

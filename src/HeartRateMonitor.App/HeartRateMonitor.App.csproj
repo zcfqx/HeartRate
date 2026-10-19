@@ -7,23 +7,26 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>HeartRateMonitor.App</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- 应用图标: exe 内嵌图标(ApplicationIcon) + 窗口/任务栏图标(EmbeddedResource)
+         注意: 这里必须是 EmbeddedResource 而不是 Resource —— pack:// URI 在单文件发布下不可靠 -->
+    <EmbeddedResource Include="Assets\app.ico" LogicalName="HeartRateMonitor.App.Assets.app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc4.5" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
-    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\HeartRateMonitor.Core\HeartRateMonitor.Core.csproj" />
     <ProjectReference Include="..\HeartRateMonitor.Data\HeartRateMonitor.Data.csproj" />
     <ProjectReference Include="..\HeartRateMonitor.Services\HeartRateMonitor.Services.csproj" />
+    <ProjectReference Include="..\HeartRateMonitor.Extensibility\HeartRateMonitor.Extensibility.csproj" />
   </ItemGroup>
 
 </Project>

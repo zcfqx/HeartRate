@@ -1,11 +1,14 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
+using Windows.Devices.Radios;
 using Windows.Storage.Streams;
 using HeartRateMonitor.Core.Enums;
 using HeartRateMonitor.Core.Events;
+using HeartRateMonitor.Core.Exceptions;
 using HeartRateMonitor.Core.Interfaces;
 using HeartRateMonitor.Core.Models;
 
@@ -16,6 +19,12 @@ public class BleService : IBleService, IDisposable
     private static readonly Guid HeartRateServiceUuid = new("0000180d-0000-1000-8000-00805f9b34fb");
     private static readonly Guid HeartRateMeasurementUuid = new("00002a37-0000-1000-8000-00805f9b34fb");
     private const int ScanTimeoutSeconds = 60;
+
+    /// <summary>ERROR_DEVICE_NOT_AVAILABLE：蓝牙无线电被关闭时 Start() 抛出的 HRESULT。</summary>
+    private const int ErrorDeviceNotAvailable = unchecked((int)0x800710DF);
+
+    /// <summary>E_ACCESSDENIED：蓝牙访问被系统拒绝。</summary>
+    private const int ErrorAccessDenied = unchecked((int)0x80070005);
 
     private readonly IHeartRateParser _parser;
     private readonly ILogger _logger;
@@ -35,8 +44,12 @@ public class BleService : IBleService, IDisposable
 
     public event EventHandler<HeartRateChangedEventArgs>? HeartRateReceived;
     public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
+    // 预留：高/低心率提醒事件（契约 IBleService 的一部分），由提醒类插件/订阅者使用，当前内置实现尚未触发
+#pragma warning disable CS0067
     public event EventHandler<HeartRateAlertEventArgs>? HeartRateAlert;
+#pragma warning restore CS0067
     public event EventHandler<BleDevice>? DeviceDiscovered;
+    public event EventHandler<BleScanFailedEventArgs>? ScanFailed;
 
     public BleService(IHeartRateParser parser, ILogger logger)
     {
@@ -48,23 +61,70 @@ public class BleService : IBleService, IDisposable
     public BleDevice? ConnectedDevice => _connectedDevice;
     public bool IsScanning => _isScanning;
 
-    public async Task<bool> RequestPermissionAsync()
+    /// <summary>
+    /// 检查蓝牙适配器与无线电状态。蓝牙开关关闭时返回 <see cref="BleAvailability.RadioOff"/>，
+    /// 而不是像以前那样只判断适配器是否存在（导致关闭蓝牙后依然报告“权限已授予”）。
+    /// </summary>
+    public async Task<BleAvailability> CheckAvailabilityAsync()
     {
         try
         {
-            var adapter = await BluetoothAdapter.GetDefaultAsync();
+            // 注意：这里必须 ConfigureAwait(false)。本方法可能被 UI 线程以
+            // .GetAwaiter().GetResult() 的方式同步等待（见 App.OnStartup），
+            // 若不脱离同步上下文，await 的续体会被排到已被阻塞的 Dispatcher 上，造成死锁（界面卡死）。
+            var adapter = await BluetoothAdapter.GetDefaultAsync().AsTask().ConfigureAwait(false);
             if (adapter == null)
             {
                 _logger.Warning("未找到蓝牙适配器");
-                return false;
+                return BleAvailability.NoAdapter;
             }
-            return true;
+
+            if (!adapter.IsLowEnergySupported)
+            {
+                _logger.Warning("蓝牙适配器不支持低功耗蓝牙（BLE）");
+                return BleAvailability.NoAdapter;
+            }
+
+            try
+            {
+                var radio = await adapter.GetRadioAsync().AsTask().ConfigureAwait(false);
+                if (radio != null && radio.State != RadioState.On)
+                {
+                    _logger.Warning($"蓝牙无线电未开启（当前: {radio.State}）");
+                    return BleAvailability.RadioOff;
+                }
+            }
+            catch (Exception radioEx)
+            {
+                // 部分环境无法读取无线电状态，此时不阻断扫描，交由 Start() 的真实结果决定
+                _logger.Warning($"读取蓝牙无线电状态失败: {radioEx.Message}");
+            }
+
+            return BleAvailability.Ready;
+        }
+        catch (Exception ex) when (IsAccessDenied(ex))
+        {
+            _logger.Warning($"蓝牙访问被拒绝: {ex.Message}");
+            return BleAvailability.AccessDenied;
         }
         catch (Exception ex)
         {
-            _logger.Error("请求蓝牙权限失败", ex);
-            return false;
+            _logger.Error("检查蓝牙可用性失败", ex);
+            return BleAvailability.Unknown;
         }
+    }
+
+    public async Task<bool> RequestPermissionAsync()
+    {
+        // 本方法可能被 UI 线程同步等待（App.OnStartup 的旧代码），因此不捕获同步上下文。
+        var availability = await CheckAvailabilityAsync().ConfigureAwait(false);
+        if (availability == BleAvailability.Ready)
+        {
+            return true;
+        }
+
+        _logger.Warning($"蓝牙当前不可用（{availability}）: {availability.ToUserMessage()}");
+        return false;
     }
 
     public async Task StartScanningAsync()
@@ -73,6 +133,15 @@ public class BleService : IBleService, IDisposable
         if (_isScanning)
         {
             await StopScanningAsync();
+        }
+
+        // 蓝牙开关关闭时 Start() 会抛出信息为空的 COMException，
+        // 这里先给出明确原因，避免界面只显示“扫描失败:”。
+        var availability = await CheckAvailabilityAsync();
+        if (availability != BleAvailability.Ready)
+        {
+            _logger.Warning($"蓝牙不可用（{availability}），无法开始扫描");
+            throw new BleUnavailableException(availability, availability.ToUserMessage());
         }
 
         try
@@ -93,7 +162,15 @@ public class BleService : IBleService, IDisposable
 
             _advertisementWatcher.Received += OnAdvertisementReceived;
             _advertisementWatcher.Stopped += OnAdvertisementStopped;
-            _advertisementWatcher.Start();
+            try
+            {
+                _advertisementWatcher.Start();
+            }
+            catch (Exception startEx) when (IsDeviceUnavailable(startEx) || IsAccessDenied(startEx))
+            {
+                var reason = IsAccessDenied(startEx) ? BleAvailability.AccessDenied : BleAvailability.RadioOff;
+                throw new BleUnavailableException(reason, reason.ToUserMessage(), startEx);
+            }
 
             _logger.Info("BLE扫描已启动");
 
@@ -111,8 +188,21 @@ public class BleService : IBleService, IDisposable
                 catch (TaskCanceledException) { }
             }, _scanCts.Token);
         }
+        catch (BleUnavailableException ex)
+        {
+            CleanupWatcher();
+            _scanCts?.Dispose();
+            _scanCts = null;
+            _isScanning = false;
+            UpdateState(ConnectionState.Disconnected);
+            _logger.Warning($"启动BLE扫描失败: {ex.Message}");
+            throw;
+        }
         catch (Exception ex)
         {
+            CleanupWatcher();
+            _scanCts?.Dispose();
+            _scanCts = null;
             _isScanning = false;
             UpdateState(ConnectionState.Disconnected);
             _logger.Error("启动BLE扫描失败", ex);
@@ -322,22 +412,37 @@ public class BleService : IBleService, IDisposable
         BluetoothLEAdvertisementReceivedEventArgs args)
     {
         var localName = args.Advertisement.LocalName;
-        var hasName = !string.IsNullOrEmpty(localName);
+        var hasName = !string.IsNullOrWhiteSpace(localName);
         var isConnectable = args.IsConnectable;
 
-        // 记录所有广播用于调试
-        if (hasName)
+        // 心率带有时不广播名称，但会广播心率服务 UUID（0x180D），这类设备同样需要收录，
+        // 否则用户点击扫描后列表可能一直是空的。
+        var advertisesHeartRate = false;
+        var serviceUuids = args.Advertisement.ServiceUuids;
+        if (serviceUuids is not null)
         {
-            _logger.Debug($"收到广播: {localName} | 可连接: {isConnectable} | 信号: {args.RawSignalStrengthInDBm} dBm");
+            for (var i = 0; i < serviceUuids.Count; i++)
+            {
+                if (serviceUuids[i] == HeartRateServiceUuid)
+                {
+                    advertisesHeartRate = true;
+                    break;
+                }
+            }
         }
 
-        if (!hasName || !isConnectable) return;
+        // 记录所有广播用于调试
+        _logger.Debug(
+            $"收到广播: {(hasName ? localName : "(无名称)")} | 心率服务: {advertisesHeartRate} | 可连接: {isConnectable} | 信号: {args.RawSignalStrengthInDBm} dBm");
+
+        if (!isConnectable) return;
+        if (!hasName && !advertisesHeartRate) return;
 
         var deviceId = args.BluetoothAddress.ToString();
         var device = new BleDevice
         {
             DeviceId = deviceId,
-            DeviceName = localName,
+            DeviceName = hasName ? localName! : "心率传感器",
             SignalStrength = args.RawSignalStrengthInDBm,
             IsConnectable = args.IsConnectable,
             BluetoothAddress = args.BluetoothAddress
@@ -350,22 +455,59 @@ public class BleService : IBleService, IDisposable
             {
                 _discoveredDevices[deviceId] = device;
                 isNew = true;
-                _logger.Debug($"[NEW] 设备首次发现: {localName} (ID: {deviceId})");
+                _logger.Debug($"[NEW] 设备首次发现: {device.DeviceName} (ID: {deviceId})");
             }
             else
             {
                 _discoveredDevices[deviceId].SignalStrength = device.SignalStrength;
-                _logger.Debug($"[UPDATE] 设备已存在: {localName} (ID: {deviceId})");
+                _logger.Debug($"[UPDATE] 设备已存在: {device.DeviceName} (ID: {deviceId})");
             }
         }
 
-        if (isNew)
+        if (!isNew)
         {
-            _logger.Info($"发现心率设备: {device.DeviceName} (信号: {device.SignalStrength} dBm) - 触发DeviceDiscovered事件");
+            return;
+        }
+
+        try
+        {
+            _logger.Info($"发现设备: {device.DeviceName} (信号: {device.SignalStrength} dBm) - 触发DeviceDiscovered事件");
             DeviceDiscovered?.Invoke(this, device);
-            _logger.Debug($"DeviceDiscovered事件已触发");
+        }
+        catch (Exception ex)
+        {
+            // 订阅方异常不能中断扫描回调，否则后续设备都收不到。
+            _logger.Error("处理设备发现事件时出错", ex);
         }
     }
+
+    /// <summary>解绑并释放当前扫描器。</summary>
+    private void CleanupWatcher()
+    {
+        var watcher = _advertisementWatcher;
+        _advertisementWatcher = null;
+        if (watcher == null) return;
+
+        try
+        {
+            watcher.Received -= OnAdvertisementReceived;
+            watcher.Stopped -= OnAdvertisementStopped;
+            try { watcher.Stop(); } catch { }
+        }
+        catch (Exception ex)
+        {
+            _logger.Debug($"释放扫描器时出错: {ex.Message}");
+        }
+    }
+
+    /// <summary>判断异常是否为蓝牙设备不可用（ERROR_DEVICE_NOT_AVAILABLE，通常是蓝牙开关关闭）。</summary>
+    private static bool IsDeviceUnavailable(Exception ex)
+        => ex is COMException com && (com.HResult == ErrorDeviceNotAvailable || com.HResult == ErrorAccessDenied);
+
+    /// <summary>判断异常是否为访问被拒绝。</summary>
+    private static bool IsAccessDenied(Exception ex)
+        => (ex is COMException com && com.HResult == ErrorAccessDenied)
+           || ex is UnauthorizedAccessException;
 
     private void OnAdvertisementStopped(BluetoothLEAdvertisementWatcher sender,
         BluetoothLEAdvertisementWatcherStoppedEventArgs args)
@@ -378,6 +520,27 @@ public class BleService : IBleService, IDisposable
             {
                 UpdateState(ConnectionState.Disconnected);
             }
+        }
+
+        if (args.Error == BluetoothError.Success) return;
+
+        var message = args.Error switch
+        {
+            BluetoothError.RadioNotAvailable => BleAvailability.RadioOff.ToUserMessage(),
+            BluetoothError.ResourceInUse => "蓝牙正被其它应用占用，请关闭其它使用蓝牙的程序后重试。",
+            BluetoothError.DisabledByPolicy => "蓝牙已被系统策略禁用，请联系管理员。",
+            BluetoothError.NotSupported => BleAvailability.NoAdapter.ToUserMessage(),
+            _ => $"蓝牙扫描意外中断（{args.Error}），请重试。"
+        };
+
+        _logger.Warning($"扫描中断: {message}");
+        try
+        {
+            ScanFailed?.Invoke(this, new BleScanFailedEventArgs(message));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("处理扫描失败事件时出错", ex);
         }
     }
 
@@ -392,7 +555,15 @@ public class BleService : IBleService, IDisposable
             }
 
             var heartRateData = _parser.Parse(data);
-            HeartRateReceived?.Invoke(this, new HeartRateChangedEventArgs(heartRateData));
+            try
+            {
+                HeartRateReceived?.Invoke(this, new HeartRateChangedEventArgs(heartRateData));
+            }
+            catch (Exception ex)
+            {
+                // 订阅方异常不能中断 GATT 通知回调。
+                _logger.Error("处理心率数据事件时出错", ex);
+            }
         }
         catch (Exception ex)
         {

@@ -1,5 +1,7 @@
 # 心率监控软件BLE通信设计文档
 
+> **v2 说明**：BLE 通信层（`BleService`/`HeartRateParser`/GATT 0x2A37 解析/自动重连）在 v2 中保持不变，本文档仍然有效。v2 仅把数据消费方式改为 `HeartRateSession` 统一订阅并分发到界面组件与插件。
+
 ## 1. BLE通信概述
 
 ### 1.1 技术背景

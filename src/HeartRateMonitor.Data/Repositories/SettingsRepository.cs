@@ -31,6 +31,27 @@ public class SettingsRepository
             new { Key = key, Value = value, Description = description });
     }
 
+    /// <summary>
+    /// 在一个事务里写入多个设置项：设置保存从“20 次独立连接”变成一次事务，
+    /// 既快又不会和心率数据落库互相抢写锁。
+    /// </summary>
+    public async Task SetManyAsync(IReadOnlyDictionary<string, string> values)
+    {
+        if (values.Count == 0)
+        {
+            return;
+        }
+
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(_db.ConnectionString);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(
+            @"INSERT OR REPLACE INTO Settings (Key, Value, Description) VALUES (@Key, @Value, NULL)",
+            values.Select(kv => new { Key = kv.Key, Value = kv.Value }),
+            transaction);
+        await transaction.CommitAsync();
+    }
+
     public async Task<Dictionary<string, string>> GetAllAsync()
     {
         await using var connection = new Microsoft.Data.Sqlite.SqliteConnection(_db.ConnectionString);

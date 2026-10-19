@@ -1,0 +1,9 @@
+{
+  "id": "breathing",
+  "name": "呼吸引导",
+  "version": "1.0.0",
+  "description": "按 4-2-6 的节奏引导深呼吸，显示当前心率和呼吸阶段，帮助在高心率时快速放松。",
+  "author": "HeartRate Monitor 示例插件",
+  "entryAssembly": "HeartRateMonitor.Plugin.Breathing.dll",
+  "entryType": "HeartRateMonitor.Plugin.Breathing.BreathingPlugin"
+}

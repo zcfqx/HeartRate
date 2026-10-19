@@ -1,0 +1,34 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- 浅色主题色板（键与深色主题完全一致） -->
+
+    <Color x:Key="Color.Background">#F3F5FB</Color>
+    <Color x:Key="Color.Surface">#FFFFFF</Color>
+    <Color x:Key="Color.SurfaceAlt">#EDF1FA</Color>
+    <Color x:Key="Color.Border">#DCE3F2</Color>
+    <Color x:Key="Color.Text">#131A2B</Color>
+    <Color x:Key="Color.TextSecondary">#4A5568</Color>
+    <Color x:Key="Color.TextMuted">#8B95AB</Color>
+    <Color x:Key="Color.Danger">#DC2626</Color>
+    <Color x:Key="Color.DangerSoft">#22DC2626</Color>
+    <Color x:Key="Color.Success">#059669</Color>
+    <Color x:Key="Color.Warning">#D97706</Color>
+    <Color x:Key="Color.Grid">#E5EAF5</Color>
+    <Color x:Key="Color.Overlay">#EAEEF8</Color>
+
+    <SolidColorBrush x:Key="Brush.Background" Color="{StaticResource Color.Background}" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
+    <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="{StaticResource Color.SurfaceAlt}" />
+    <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
+    <SolidColorBrush x:Key="Brush.Text" Color="{StaticResource Color.Text}" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}" />
+    <SolidColorBrush x:Key="Brush.DangerSoft" Color="{StaticResource Color.DangerSoft}" />
+    <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+    <SolidColorBrush x:Key="Brush.Grid" Color="{StaticResource Color.Grid}" />
+    <SolidColorBrush x:Key="Brush.Overlay" Color="{StaticResource Color.Overlay}" />
+
+</ResourceDictionary>

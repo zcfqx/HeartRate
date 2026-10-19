@@ -7,12 +7,14 @@
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows)]()
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](#许可证)
-[![Build](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-62%20passed-brightgreen.svg)]()
 [![C#](https://img.shields.io/badge/C%23-12-239120?logo=csharp)]()
 
-通过蓝牙低功耗（BLE）协议连接华为手环，在透明悬浮窗中实时显示心率数值、趋势图表和统计数据。
+通过蓝牙低功耗（BLE）协议连接华为手环，在无边框悬浮窗中实时显示心率数值、趋势曲线与统计信息。
+**v2 已重构为轻量、可插拔的组件化看板**：界面重新设计，依赖大幅裁剪，功能全部以插件形式增删。
+**v2.1 修复**：深色模式文字过暗、扫描列表拿不到设备、设置保存偶发失败；新增极简模式（心跳图标 + 数字，可选曲线）与可调至 **0%（完全透明）** 的背景。
 
-[功能特性](#功能特性) | [快速开始](#快速开始) | [使用方法](#使用方法) | [配置说明](#配置说明) | [贡献指南](#贡献指南)
+[功能特性](#功能特性) | [界面预览](#界面预览) | [快速开始](#快速开始) | [插件机制](#插件机制) | [项目架构](#项目架构) | [文档索引](#文档索引)
 
 </div>
 
@@ -21,31 +23,22 @@
 ## 目录
 
 - [功能特性](#功能特性)
-- [截图预览](#截图预览)
+- [界面预览](#界面预览)
 - [系统要求](#系统要求)
 - [快速开始](#快速开始)
-  - [先决条件](#先决条件)
-  - [安装步骤](#安装步骤)
-  - [构建与运行](#构建与运行)
 - [使用方法](#使用方法)
-  - [连接设备](#连接设备)
-  - [界面说明](#界面说明)
-  - [系统托盘](#系统托盘)
-- [配置说明](#配置说明)
-  - [应用设置](#应用设置)
-  - [心率阈值设置](#心率阈值设置)
-  - [数据管理设置](#数据管理设置)
+- [插件机制](#插件机制)
 - [项目架构](#项目架构)
-  - [技术栈](#技术栈)
-  - [分层架构](#分层架构)
-  - [项目结构](#项目结构)
-- [支持设备](#支持设备)
+- [配置说明](#配置说明)
+- [数据与日志路径](#数据与日志路径)
+- [心率区间](#心率区间)
 - [BLE 协议说明](#ble-协议说明)
 - [运行测试](#运行测试)
-- [API 参考](#api-参考)
+- [发布与体积](#发布与体积)
+- [故障排查](#故障排查)
+- [文档索引](#文档索引)
 - [贡献指南](#贡献指南)
 - [许可证](#许可证)
-- [致谢](#致谢)
 
 ---
 
@@ -53,39 +46,58 @@
 
 ### 核心功能
 
-- **BLE 设备扫描与连接** — 自动扫描周围蓝牙低功耗设备，支持手动选择华为手环连接
-- **实时心率接收** — 基于标准蓝牙心率服务（GATT UUID: `0x180D`）接收并解析心率数据
-- **心率趋势图表** — 使用 LiveCharts2 实时绘制心率折线图，自动缩放 Y 轴范围
-- **心率区间识别** — 自动分类 5 种心率区间（静息 / 燃脂 / 有氧 / 极限 / 最大），以不同颜色标识
-- **实时统计** — 动态计算并显示平均心率、最高心率、最低心率
-- **RR 间期解析** — 提取心跳间期（RR-Interval）数据，用于心率变异性（HRV）分析
-- **自动重连** — 设备断开连接后自动尝试重新连接（最多 3 次，递增退避间隔）
+- **BLE 设备扫描与连接** — 自动扫描周围低功耗蓝牙心率设备，设备列表内嵌在悬浮窗组件中
+- **实时心率接收** — 基于标准蓝牙心率服务（GATT `0x180D` / `0x2A37`）接收并解析心率数据
+- **轻量趋势曲线** — 自绘 `Sparkline` 控件（平滑贝塞尔曲线 + 半透明面积），不再依赖 SkiaSharp/LiveCharts
+- **心率区间识别** — 五区间自动分类（放松 / 燃脂 / 有氧 / 无氧 / 极限），颜色映射
+- **实时统计** — 当前/平均/最高/最低心率、RR 间期、卡路里估算、本次会话时长
+- **自动重连** — 设备断开后自动重连（最多 3 次，递增退避），启动时可选自动回连上次设备
 
 ### 界面特性
 
-- **透明悬浮窗** — 背景完全透明，窗口置顶显示，不遮挡其他应用程序
-- **心率颜色映射** — 心率数值根据当前区间动态变换颜色
-- **连接状态指示** — 实时显示扫描中 / 连接中 / 已连接 / 重连中 / 未连接等状态
-- **设备选择窗口** — 独立的设备选择对话框，支持扫描结果列表与信号强度显示
-- **设置窗口** — 完整的配置管理界面
+- **无边框圆角悬浮窗** — 置顶显示，可拖动、可调整宽度、可调不透明度
+- **组件化看板** — 功能以「组件卡片」排列，随时从组件库增删、进入编辑模式移除
+- **极简模式** — 只显示心跳图标 + 大号数字，可右键开关趋势曲线；双击或再次点击极简按钮返回看板
+- **背景完全透明** — 不透明度滑杆可调到 0%，只保留文字与图形，适合叠加在桌面或视频上
+- **深色 / 浅色主题** — 运行时即时切换，8 种强调色可选，无需重启（v2.1 修正深色主题下部分文字继承黑色的问题）
+- **设置中心** — 左侧导航式设置窗：外观 / 连接 / 提醒 / 数据 / 插件贡献页 / 功能插件 / 关于
+- **系统托盘** — 自研 Win32 托盘图标（P/Invoke），右键菜单含插件命令，关闭窗口默认最小化到托盘
+- **单实例守护** — 重复启动会唤醒已有窗口；若旧进程卡死占用实例锁，会自动结束它并继续启动（v2.1）
+
+### 插件化
+
+- **可增删的功能** — 组件（Widget）、设置页（Settings Section）、托盘命令（Command）三类扩展点
+- **内置插件 + 外部插件同 API** — 内置 4 个插件编译进主程序；外部插件放入插件目录即可被发现
+- **程序集隔离** — 每个外部插件独立可回收 `AssemblyLoadContext`，共享 `HeartRateMonitor.*` 契约程序集
+- **热管理** — 设置页内启用 / 禁用 / 重新加载 / 卸载 / 重新扫描，禁用状态持久化
 
 ### 数据管理
 
-- **本地数据持久化** — 使用 SQLite 数据库存储心率记录和设备信息
-- **设备记忆** — 自动保存已配对设备信息，支持启动时自动回连
-- **历史数据查询** — 支持按时间范围查询历史心率记录
-- **每日报告** — 自动生成每日心率统计报告
+- **本地持久化** — SQLite 存储心率记录与设备信息（会话数据按 1s 节流写库）
+- **设备记忆** — 保存上次连接设备，支持启动自动回连
+- **数据清理** — 按保留天数清理历史数据
+- **文件日志** — 内置 `FileLogger` 按天写文件，单文件 4MB 轮转，保留 7 天
 
 ---
 
-## 截图预览
+## 界面预览
 
-> 将截图文件放置于 `docs/images/` 目录下，以下为推荐截图：
+| 主悬浮窗（深色） | 组件库浮层 |
+|:---:|:---:|
+| ![主悬浮窗](docs/screenshots/main-dark.png) | ![组件库](docs/screenshots/main-add-panel.png) |
+| 组件卡片看板 + 连接状态 + 会话底栏 | 从组件库添加组件（含外部插件贡献的「呼吸引导」） |
 
-| 主悬浮窗 | 设备选择 | 设置界面 |
+| 设置中心（深色） | 设置中心（浅色） |
+|:---:|:---:|
+| ![设置-深色](docs/screenshots/settings-dark.png) | ![设置-浅色](docs/screenshots/settings-light.png) |
+| 左侧导航 + 外观页 + 插件贡献的「呼吸引导」页 | 浅色主题即时切换，强调色可换 |
+
+| 极简模式（带曲线） | 极简模式（无曲线） | 极简模式（背景 0% 透明） |
 |:---:|:---:|:---:|
-| ![主界面](docs/images/main-window.png) | ![设备选择](docs/images/device-picker.png) | ![设置](docs/images/settings.png) |
-| 透明背景 + 心率图表 | BLE 设备扫描列表 | 完整配置管理 |
+| ![极简-曲线](docs/screenshots/main-minimal.png) | ![极简-无曲线](docs/screenshots/main-minimal-nochart.png) | ![极简-透明](docs/screenshots/main-minimal-transparent.png) |
+| 心跳图标 + BPM + 区间 | 右键菜单「显示趋势曲线」可关 | 背景完全透明，只留文字与图形 |
+
+> 截图由仓库内 `tools/HeartRateMonitor.UiSmoke` 离线渲染生成（`RenderTargetBitmap`，非系统截图）：`dotnet run --project tools/HeartRateMonitor.UiSmoke`。运行前请先退出正在运行的应用（单实例）。更多设计说明见 [docs/UI-REDESIGN.md](docs/UI-REDESIGN.md)。
 
 ---
 
@@ -96,17 +108,7 @@
 | **操作系统** | Windows 10 (build 19041+) 或 Windows 11 |
 | **运行时** | [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
 | **蓝牙** | Bluetooth 4.0+ (BLE) 适配器 |
-| **屏幕** | 1920×1080 及以上分辨率（推荐） |
 | **内存** | 100 MB 可用内存 |
-
-### 性能指标
-
-| 指标 | 目标值 |
-|------|--------|
-| CPU 占用 | < 5% |
-| 内存占用 | < 100 MB |
-| 数据延迟 | < 2 秒 |
-| 启动时间 | < 3 秒 |
 
 ---
 
@@ -114,48 +116,48 @@
 
 ### 先决条件
 
-确保已安装以下工具：
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- 支持 BLE 的蓝牙适配器
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)（包含运行时和开发工具）
-- [Git](https://git-scm.com/downloads)（用于克隆仓库）
-- 支持 BLE 的蓝牙适配器（内置或 USB 外置）
-
-### 安装步骤
-
-**1. 克隆仓库**
+### 构建与运行
 
 ```bash
 git clone https://github.com/<your-username>/HeartRate.git
 cd HeartRate
-```
 
-**2. 还原依赖包**
+# 构建整个解决方案（5 个项目）
+dotnet build src/HeartRateMonitor.sln -c Debug
 
-```bash
-dotnet restore src/HeartRateMonitor.App/HeartRateMonitor.App.csproj
-```
-
-**3. 构建项目**
-
-```bash
-dotnet build src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release
-```
-
-### 构建与运行
-
-**开发模式运行：**
-
-```bash
+# 开发模式运行
 dotnet run --project src/HeartRateMonitor.App/HeartRateMonitor.App.csproj
 ```
 
-**发布独立程序：**
+> **受限沙箱提示：** 若 `dotnet build` 在“正在确定要还原的项目…”之后立即失败且不报错，说明当前终端无法建立 MSBuild 并行节点。
+> 在命令后追加 `-m:1 -p:BuildInParallel=false` 即可正常构建，例如：
+> `dotnet build src/HeartRateMonitor.sln -c Debug -m:1 -p:BuildInParallel=false`
+
+### 发布
 
 ```bash
-dotnet publish src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+# 框架依赖单文件（体积最小，需目标机器安装 .NET 8 Desktop Runtime）
+dotnet publish src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release -r win-x64 `
+  --self-contained false -p:PublishSingleFile=true -o publish/framework-dependent
+
+# 自包含单文件（免安装运行时，开启压缩后约 75 MB）
+dotnet publish src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release -r win-x64 `
+  --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish/self-contained
 ```
 
-发布产物位于 `src/HeartRateMonitor.App/bin/Release/net8.0-windows10.0.22621.0/publish/` 目录下。
+### 快捷启动图标
+
+应用图标为 `src/HeartRateMonitor.App/Assets/app.ico`（多尺寸，由 `scripts/generate_app_icon.py` 生成），
+构建时内嵌进 exe 并作为窗口/托盘图标（从内嵌资源解码，不依赖 `pack://`，单文件发布同样有效）。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\Install-Shortcut.ps1            # 桌面 + 开始菜单
+powershell -ExecutionPolicy Bypass -File scripts\Install-Shortcut.ps1 -AutoStart # 额外开机自启
+powershell -ExecutionPolicy Bypass -File scripts\Install-Shortcut.ps1 -Uninstall # 删除快捷方式
+```
 
 ---
 
@@ -163,97 +165,165 @@ dotnet publish src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release -
 
 ### 连接设备
 
-1. **开启手环心率广播** — 在华为手环上进入运动模式，或在设置中开启"心率广播"功能
-2. **启动应用** — 运行 HeartRate Monitor 应用程序
-3. **扫描设备** — 点击主界面的扫描按钮，应用将搜索附近的 BLE 心率设备
-4. **选择设备** — 从设备列表中选择你的华为手环，点击连接
-5. **查看心率** — 连接成功后，悬浮窗将实时显示心率数值和趋势图表
+1. **开启手环心率广播** — 华为手环进入运动模式，或在设置中开启「心率广播」
+2. **启动应用** — 运行 HeartRate Monitor
+3. **扫描并连接** — 在「设备连接」组件卡片中点击**扫描**，从列表中选择手环连接
+4. **查看数据** — 连接成功后，心率、趋势、区间、统计组件实时更新
 
-> **提示：** 首次连接成功后，应用会记住设备信息。下次启动时如开启"自动连接"，将自动尝试回连。
+> 首次连接成功后会记住设备；下次启动如开启「自动连接」，应用会在后台自动回连。
 
-### 界面说明
+### 主界面说明
 
 ```
-┌──────────────────────────────────────┐
-│                                      │
-│     ♥  72 BPM                        │  心率图标 + 实时数值
-│     ─────────────────────            │
-│     │    /\    /\                    │  心率趋势折线图
-│     │   /  \  /  \    /\            │
-│     │  /    \/    \  /  \           │
-│     │ /            \/    \          │
-│     └─────────────────────          │
-│     Avg: 68  Max: 85  Min: 62       │  统计信息
-│     静息 · 信号良好                   │  心率区间 · 连接状态
-│                                      │
-└──────────────────────────────────────┘
-         ↑ 背景完全透明
+┌──────────────────────────────────────────┐
+│ ♥ 心率监控 ● 已连接   ＋  ✎  ⚙  ─  ✕   │  顶栏：状态 + 添加组件/编辑/设置/最小化/关闭
+├──────────────────────────────────────────┤
+│ ┌──────────────────────────────────────┐ │
+│ │ ♥ 心率                     核心显示  │ │  组件卡片（可增删）
+│ │   72 BPM                ♡            │ │
+│ │   [燃脂]                             │ │
+│ └──────────────────────────────────────┘ │
+│ ┌──────────────────────────────────────┐ │
+│ │ 📈 心率趋势                 核心显示  │ │
+│ │  ╭─╮   ╭──╮    ╭╮   最近趋势  72     │ │
+│ │ ╯   ╰─╯    ╰──╯ ╰─╯                  │ │
+│ └──────────────────────────────────────┘ │
+│ ┌──────────────────────────────────────┐ │
+│ │ 设备连接                   设备连接   │ │
+│ │ ● 已连接  华为手环 8          [断开]  │ │
+│ └──────────────────────────────────────┘ │
+├──────────────────────────────────────────┤
+│ 本次会话 12:34 · 华为手环 8      ＋添加组件│  底栏：会话时长 + 设备名 + 添加组件
+└──────────────────────────────────────────┘
 ```
 
-| 元素 | 说明 |
+| 操作 | 说明 |
 |------|------|
-| 心率数值 | 大号字体显示当前 BPM，颜色随心率区间变化 |
-| 心率图标 | 线条心形图标 |
-| 趋势图表 | 最近 2 分钟心率折线图，自动缩放 |
-| 统计信息 | 平均 / 最高 / 最低心率 |
-| 心率区间 | 静息（紫）/ 燃脂（绿）/ 有氧（黄）/ 极限（橙）/ 最大（红） |
-| 连接状态 | 指示当前 BLE 连接状态 |
+| 拖动顶栏 | 移动悬浮窗；位置自动记忆 |
+| 点击 ＋ | 打开组件库浮层，点击任意组件加入看板 |
+| 点击 ✎ | 进入编辑模式，组件右上角出现移除按钮 |
+| 点击 ⚙ | 打开设置中心 |
+| 点击 ⤢（极简按钮） | 切换到极简模式 |
+| 点击 ─ / 关闭 | 最小化到托盘（可关闭「关闭时最小化」改为退出） |
+| 托盘图标 | 左键显示/隐藏窗口，右键菜单：显示主窗口 / 设置 / 极简模式 / 插件命令 / 退出 |
 
-**心率区间颜色对照：**
+### 极简模式
 
-| 区间 | 心率范围 | 颜色 |
-|------|----------|------|
-| 静息 | < 100 BPM | ![#6366F1](https://via.placeholder.com/12/6366F1/6366F1.png) `#6366F1` |
-| 燃脂 | 100 - 139 BPM | ![#22C55E](https://via.placeholder.com/12/22C55E/22C55E.png) `#22C55E` |
-| 有氧 | 140 - 169 BPM | ![#F59E0B](https://via.placeholder.com/12/F59E0B/F59E0B.png) `#F59E0B` |
-| 极限 | 170 - 199 BPM | ![#F97316](https://via.placeholder.com/12/F97316/F97316.png) `#F97316` |
-| 最大 | ≥ 200 BPM | ![#EF4444](https://via.placeholder.com/12/EF4444/EF4444.png) `#EF4444` |
+只显示「心跳图标 + 大号 BPM + 当前区间」的小窗口，适合长期贴在桌面角落：
 
-### 系统托盘
+| 操作 | 说明 |
+|------|------|
+| 顶栏的极简按钮（或托盘菜单「极简模式」） | 进入 / 退出极简模式 |
+| 极简窗口内双击 | 退出极简模式 |
+| 极简窗口内拖动 | 移动窗口（位置与普通模式共用） |
+| 极简窗口右键 | 显示趋势曲线（可勾选开关）/ 退出极简 / 设置 / 最小化 / 关闭 |
+| 设置 → 外观 → 极简模式 | 默认进入极简、是否显示趋势曲线 |
+| 设置 → 外观 → 不透明度 | 调到 0% 时窗口背景完全透明，只保留文字与图形 |
 
-应用支持最小化到系统托盘，双击托盘图标可恢复窗口显示。关闭主窗口时，应用将自动最小化到托盘而非退出。
+### 内置组件
+
+| 组件 | 说明 | 默认显示 |
+|------|------|:--------:|
+| `bpm` 心率 | 大号 BPM、单位、区间标签、心跳脉冲动画 | ✅ |
+| `chart` 心率趋势 | 自绘 Sparkline 曲线 + 最近段最小/最大值 | ✅ |
+| `zone` 心率区间 | 五段区间条，高亮当前区间 | — |
+| `device` 设备连接 | 内嵌扫描、设备列表、连接/断开 | ✅ |
+| `stats` 会话统计 | 本次会话平均 / 最高 / 最低 | — |
+| `session` 本次会话 | 时长、卡路里、采样数、开始新会话 | — |
+| `clock` 时钟 | 当前时间与日期 | — |
+
+### 设置中心
+
+| 页面 | 内容 |
+|------|------|
+| 外观 | 深色/浅色主题、8 种强调色、不透明度、窗口宽度、托盘/开机自启 |
+| 连接 | 当前连接状态、重连、断开、打开系统蓝牙设置、自动连接 |
+| 提醒 | 通知/声音开关、心率上下限阈值 |
+| 数据 | 数据保留天数、清理数据、打开数据/日志目录 |
+| 功能插件 | 插件列表：启用/禁用、重新加载、卸载、打开插件目录、重新扫描 |
+| 关于 | 版本、插件统计、数据/插件路径 |
+| 插件贡献页 | 由插件通过 `SettingsSectionDescriptor` 注入（示例：呼吸引导） |
 
 ---
 
-## 配置说明
+## 插件机制
 
-应用的所有配置项均通过设置界面管理，并持久化存储于 SQLite 数据库中。
+应用的功能完全由插件驱动：**内置 4 个插件**（`core` / `device` / `session` / `extras`）编译进主程序，
+**外部插件**放在插件目录，启动时被发现并加载。
 
-### 应用设置
+### 插件能提供什么
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `Theme` | string | `Dark` | 界面主题（`Dark` / `Light`） |
-| `Language` | string | `zh-CN` | 界面语言 |
-| `OverlayOpacity` | double | `1.0` | 悬浮窗透明度（0.5 - 1.0） |
-| `StartWithWindows` | bool | `false` | 是否开机自启动 |
-| `MinimizeToTray` | bool | `true` | 关闭窗口时最小化到系统托盘 |
-| `MinimalMode` | bool | `false` | 极简模式（隐藏图表） |
+| 扩展点 | 描述符 | 表现 |
+|--------|--------|------|
+| 组件 | `WidgetDescriptor` | 出现在「组件库」，可加入主看板 |
+| 设置页 | `SettingsSectionDescriptor` | 作为一页加入设置中心左侧导航 |
+| 命令 | `CommandDescriptor` | 出现在托盘右键菜单（可执行任意逻辑） |
 
-### 心率阈值设置
+### 插件放置位置
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `HighHeartRateThreshold` | int | `160` | 心率上限报警阈值（BPM） |
-| `LowHeartRateThreshold` | int | `50` | 心率下限报警阈值（BPM） |
-| `EnableNotifications` | bool | `true` | 启用心率异常通知 |
-| `EnableSoundAlert` | bool | `false` | 启用声音报警 |
+```text
+%LOCALAPPDATA%\HeartRateMonitor\plugins\
+└── Breathing\                   # 一个插件一个目录
+    ├── plugin.json              # 清单：id / name / entryAssembly / entryType ...
+    └── HeartRateMonitor.Plugin.Breathing.dll
+```
 
-### 数据管理设置
+也支持 `AppContext.BaseDirectory\plugins\`（便携部署）。插件数据目录为
+`%LOCALAPPDATA%\HeartRateMonitor\plugin-data\<插件 id>\`。
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `AutoConnect` | bool | `true` | 启动时自动连接上次设备 |
-| `LastDeviceId` | string | — | 上次连接的设备 ID |
-| `LastDeviceName` | string | — | 上次连接的设备名称 |
-| `DataRetentionDays` | int | `30` | 心率数据保留天数 |
+最小清单：
 
-### 数据存储路径
+```json
+{
+  "id": "breathing",
+  "name": "呼吸引导",
+  "version": "1.0.0",
+  "description": "跟随动画节奏呼吸，降低心率。",
+  "author": "you",
+  "entryAssembly": "HeartRateMonitor.Plugin.Breathing.dll",
+  "entryType": "HeartRateMonitor.Plugin.Breathing.BreathingPlugin"
+}
+```
 
-| 数据类型 | 路径 |
-|----------|------|
-| 数据库文件 | `%LocalAppData%/HeartRateMonitor/heartrate.db` |
-| 日志文件 | `%LocalAppData%/HeartRateMonitor/logs/app-{date}.log` |
+入口实现 `IAppPlugin`：
+
+```csharp
+public sealed class BreathingPlugin : IAppPlugin
+{
+    public PluginMetadata Metadata => new()
+    {
+        Id = "breathing",
+        Name = "呼吸引导",
+        Description = "跟随动画节奏呼吸，降低心率。",
+        Version = "1.0.0",
+        Author = "you"
+    };
+
+    public void Register(IPluginContext context, IPluginRegistrar registrar)
+    {
+        registrar.AddWidget(new WidgetDescriptor
+        {
+            Id = "breathing",
+            Title = "呼吸引导",
+            Icon = "sparkles",              // 逻辑图标键，宿主映射为矢量图标
+            Order = 70,
+            CreateView = ctx => new BreathingWidget(ctx)
+        });
+    }
+}
+```
+
+完整教程、生命周期、隔离细节与调试方法见 **[docs/PLUGIN-DEVELOPMENT.md](docs/PLUGIN-DEVELOPMENT.md)**，
+可直接参考可运行示例 **[samples/Breathing](samples/Breathing)**（呼吸引导：组件 + 设置页 + 托盘命令）。
+
+构建并安装示例插件：
+
+```bash
+dotnet build samples/Breathing/Breathing.csproj -c Debug
+# 产物：samples/Breathing/bin/Debug/net8.0-windows10.0.22621.0/plugin/
+# 将该目录整体复制为 %LOCALAPPDATA%\HeartRateMonitor\plugins\Breathing
+# 然后在 设置 → 功能插件 → 重新扫描
+```
 
 ---
 
@@ -261,48 +331,63 @@ dotnet publish src/HeartRateMonitor.App/HeartRateMonitor.App.csproj -c Release -
 
 ### 技术栈
 
-| 层级 | 技术 | 版本 | 说明 |
-|------|------|------|------|
-| UI 框架 | WPF | .NET 8 | 透明窗口、硬件加速渲染 |
-| MVVM 框架 | CommunityToolkit.Mvvm | 8.3.2 | 源生成器、ObservableProperty、RelayCommand |
-| BLE 通信 | Windows BLE API | — | `Windows.Devices.Bluetooth` 原生 API |
-| 图表库 | LiveCharts2 (SkiaSharp) | 2.0.0-rc4.5 | 高性能实时折线图 |
-| 数据库 | SQLite + Dapper | — | 轻量级本地关系型数据库 |
-| 日志 | Serilog | 4.1.0 | 结构化日志，按天滚动写入文件 |
-| 系统托盘 | Hardcodet.NotifyIcon.Wpf | 2.0.1 | Windows 系统托盘图标支持 |
-| 依赖注入 | Microsoft.Extensions.DI | 8.0.1 | 内置依赖注入容器 |
-| 测试框架 | MSTest | 3.1.1 | 单元测试 |
+| 组件 | 技术 | 说明 |
+|------|------|------|
+| UI 框架 | WPF / .NET 8 | 无边框悬浮窗、XAML + 纯 C# 组件视图 |
+| MVVM | CommunityToolkit.Mvvm 8.3.2 | 源生成器、`ObservableProperty`、`RelayCommand` |
+| BLE 通信 | Windows BLE API | `Windows.Devices.Bluetooth` 原生 API |
+| 图表 | 自研 `Sparkline` | `FrameworkElement` + `StreamGeometry` 自绘 |
+| 数据库 | SQLite + Dapper | 本地关系型存储 |
+| 日志 | 自研 `FileLogger` | 按天滚动、4MB 轮转、保留 7 天 |
+| 托盘 | 自研 `TrayIcon` | `Shell_NotifyIcon` P/Invoke |
+| 依赖注入 | Microsoft.Extensions.DI 8.0.1 | 内置 DI 容器 |
+| 测试 | MSTest 3.1.1 | 62 个单元测试 |
+
+### 轻量化：依赖裁剪对比
+
+| 依赖 | v1 | v2 | 替代方案 |
+|------|:--:|:--:|----------|
+| LiveChartsCore.SkiaSharpView.WPF（含 SkiaSharp 原生库） | ✅ | ❌ 移除 | 自绘 `Sparkline` |
+| Serilog + Sinks.File | ✅ | ❌ 移除 | 自研 `FileLogger` |
+| Hardcodet.NotifyIcon.Wpf | ✅ | ❌ 移除 | 自研 Win32 `TrayIcon` |
+| Microsoft.Extensions.Hosting | ✅ | ❌ 移除 | 直接使用 DI 容器 |
+| CommunityToolkit.Mvvm | ✅ | ✅ 保留 | — |
+| Microsoft.Extensions.DependencyInjection | ✅ | ✅ 保留 | — |
 
 ### 分层架构
 
-项目采用 **MVVM + 分层架构** 设计，遵循依赖倒置原则（DIP）：
-
 ```
-┌───────────────────────────────────────────────────────────────┐
-│                  Presentation Layer (WPF)                     │
-│   Views (XAML)  ←→  ViewModels (C#)  ←→  Converters         │
-├───────────────────────────────────────────────────────────────┤
-│                  Service Layer                                │
-│   BleService │ HeartRateService │ DataService │ SettingsService│
-├───────────────────────────────────────────────────────────────┤
-│                  Domain Layer (Core)                          │
-│   Models │ Interfaces │ Enums │ Events                        │
-├───────────────────────────────────────────────────────────────┤
-│                  Infrastructure Layer                         │
-│   Windows BLE API │ SQLite + Dapper │ Serilog                 │
-└───────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  HeartRateMonitor.App (WPF)                                │
+│  Views / ViewModels / Widgets / Themes / Infrastructure    │
+│  Extensibility（插件宿主实现：PluginHost / LoadContext）    │
+├────────────────────────────────────────────────────────────┤
+│  HeartRateMonitor.Extensibility（插件契约，供第三方引用）    │
+│  IAppPlugin / IPluginHost / WidgetDescriptor / ...          │
+├────────────────────────────────────────────────────────────┤
+│  HeartRateMonitor.Services                                 │
+│  BleService / HeartRateSession / DataService / Settings     │
+│  HeartRateParser / HeartRateCalculator / FileLogger         │
+├────────────────────────────────────────────────────────────┤
+│  HeartRateMonitor.Core（零外部依赖）                        │
+│  Models / Interfaces / Enums / Events / Exceptions          │
+├────────────────────────────────────────────────────────────┤
+│  HeartRateMonitor.Data                                     │
+│  SQLite + Dapper：Database / Entities / Repositories        │
+└────────────────────────────────────────────────────────────┘
 ```
 
-**模块依赖关系：**
+**模块依赖：**
 
 ```
 HeartRateMonitor.App
-    ├── HeartRateMonitor.Core          (无外部依赖)
+    ├── HeartRateMonitor.Core
+    ├── HeartRateMonitor.Data
     ├── HeartRateMonitor.Services
     │   ├── HeartRateMonitor.Core
     │   └── HeartRateMonitor.Data
-    └── HeartRateMonitor.Data
-        └── HeartRateMonitor.Core
+    └── HeartRateMonitor.Extensibility   （插件契约）
+            └── HeartRateMonitor.Core
 ```
 
 ### 项目结构
@@ -310,116 +395,139 @@ HeartRateMonitor.App
 ```
 HeartRate/
 ├── src/
-│   ├── HeartRateMonitor.App/                 # WPF 主应用程序
-│   │   ├── ViewModels/                       # 视图模型
-│   │   │   ├── MainViewModel.cs              # 主窗口逻辑、图表数据、事件处理
-│   │   │   ├── SettingsViewModel.cs          # 设置管理
-│   │   │   └── DevicePickerViewModel.cs      # 设备扫描与选择
-│   │   ├── Views/                            # XAML 视图
-│   │   │   ├── MainWindow.xaml(.cs)          # 主悬浮窗
-│   │   │   ├── SettingsWindow.xaml(.cs)      # 设置窗口
-│   │   │   └── DevicePickerWindow.xaml(.cs)  # 设备选择窗口
-│   │   ├── Converters/                       # XAML 值转换器
-│   │   ├── Styles/                           # 主题与样式资源
-│   │   ├── App.xaml(.cs)                     # 应用入口、依赖注入配置
-│   │   └── HeartRateMonitor.App.csproj
+│   ├── HeartRateMonitor.App/               # WPF 主程序 + 插件宿主
+│   │   ├── Controls/Sparkline.cs           # 自绘趋势曲线
+│   │   ├── Converters/Converters.cs        # XAML 值转换器
+│   │   ├── Extensibility/                  # 插件宿主实现
+│   │   │   ├── PluginHost.cs               # 发现/加载/启停/卸载插件
+│   │   │   ├── PluginLoadContext.cs        # 可回收 AssemblyLoadContext
+│   │   │   ├── PluginManifest.cs           # plugin.json 解析
+│   │   │   ├── PluginContext.cs            # 插件上下文与工厂
+│   │   │   └── BuiltInPlugins.cs           # 内置 4 插件
+│   │   ├── Infrastructure/
+│   │   │   ├── ThemeManager.cs             # 主题/强调色运行时切换
+│   │   │   ├── TrayIcon.cs                 # Win32 托盘图标
+│   │   │   └── AppIcons.cs                 # 逻辑图标键 → 矢量 Geometry
+│   │   ├── Themes/Theme.Dark.xaml          # 深色色板
+│   │   ├── Themes/Theme.Light.xaml         # 浅色色板
+│   │   ├── Styles/Base.xaml                # 字体/卡片/按钮/开关等样式
+│   │   ├── ViewModels/
+│   │   │   ├── MainViewModel.cs            # 看板、布局持久化、插件同步
+│   │   │   ├── SettingsViewModel.cs        # 设置中心
+│   │   │   ├── WidgetTileViewModel.cs      # 组件卡片
+│   │   │   ├── PluginItemViewModel.cs      # 插件管理项
+│   │   │   └── SettingsNavItem.cs
+│   │   ├── Views/
+│   │   │   ├── MainWindow.xaml(.cs)        # 无边框悬浮窗
+│   │   │   ├── SettingsWindow.xaml(.cs)    # 导航式设置中心
+│   │   │   └── Settings/                   # 外观/连接/提醒/数据/插件/关于 页
+│   │   ├── Widgets/                        # 7 个内置组件视图
+│   │   ├── Assets/app.ico
+│   │   └── App.xaml(.cs)
 │   │
-│   ├── HeartRateMonitor.Core/                # 核心业务逻辑层（零外部依赖）
-│   │   ├── Models/                           # 数据模型
-│   │   │   ├── HeartRateData.cs              # 心率数据模型
-│   │   │   ├── BleDevice.cs                  # BLE 设备模型
-│   │   │   ├── HeartRateStatistics.cs        # 心率统计模型
-│   │   │   ├── HeartRateZone.cs              # 心率区间模型
-│   │   │   └── DailyReport.cs                # 每日报告模型
-│   │   ├── Interfaces/                       # 服务接口契约
-│   │   │   ├── IBleService.cs                # 蓝牙服务接口
-│   │   │   ├── IHeartRateService.cs          # 心率服务接口
-│   │   │   ├── IDataService.cs               # 数据服务接口
-│   │   │   ├── ISettingsService.cs           # 设置服务接口
-│   │   │   ├── IHeartRateParser.cs           # 数据解析接口
-│   │   │   ├── IHeartRateCalculator.cs       # 统计计算接口
-│   │   │   └── ILogger.cs                    # 日志接口
-│   │   ├── Enums/                            # 枚举定义
-│   │   └── Events/                           # 事件参数
+│   ├── HeartRateMonitor.Extensibility/     # 插件契约程序集
+│   │   ├── PluginMetadata.cs               # IAppPlugin / PluginMetadata
+│   │   ├── Contributions.cs                # 三类描述符 + IPluginRegistrar
+│   │   ├── IPluginContext.cs               # 插件上下文
+│   │   └── IPluginHost.cs                  # 宿主接口
 │   │
-│   ├── HeartRateMonitor.Services/            # 服务层实现
-│   │   ├── BLE/
-│   │   │   └── BleService.cs                 # BLE 扫描、GATT 连接、数据接收
-│   │   ├── HeartRate/
-│   │   │   ├── HeartRateService.cs           # 心率数据管理与事件分发
-│   │   │   ├── HeartRateParser.cs            # BLE 原始数据解析（UINT8/UINT16/RR）
-│   │   │   └── HeartRateCalculator.cs        # 统计计算、区间分类、报告生成
-│   │   ├── DataService/
-│   │   │   └── DataService.cs                # 数据持久化封装
-│   │   ├── Settings/
-│   │   │   └── SettingsService.cs            # 配置管理
-│   │   └── SerilogLogger.cs                  # Serilog 日志适配器
+│   ├── HeartRateMonitor.Core/              # 领域层（无外部依赖）
+│   │   ├── Models/                         # HeartRateData / HeartRatePoint /
+│   │   │                                   # HeartRateZones / WidgetLayoutCodec ...
+│   │   ├── Interfaces/                     # IBleService / IHeartRateSession /
+│   │   │                                   # IDataService / ISettingsService ...
+│   │   ├── Enums/ Events/ Exceptions/
 │   │
-│   └── HeartRateMonitor.Data/                # 数据访问层
-│       ├── Database/
-│       │   └── DatabaseInitializer.cs        # SQLite 数据库初始化与表创建
-│       ├── Entities/                         # 数据库实体
-│       │   ├── HeartRateRecordEntity.cs
-│       │   ├── DeviceInfoEntity.cs
-│       │   └── SettingsEntity.cs
-│       └── Repositories/                     # 仓储模式实现
-│           ├── HeartRateRepository.cs
-│           ├── DeviceRepository.cs
-│           └── SettingsRepository.cs
+│   ├── HeartRateMonitor.Services/          # 服务实现
+│   │   ├── BLE/BleService.cs
+│   │   ├── HeartRate/                      # Parser / Calculator / Service / Session
+│   │   ├── DataService/ Settings/ Logging/
+│   │
+│   └── HeartRateMonitor.Data/              # SQLite + Dapper
+│       ├── Database/ Entities/ Repositories/
 │
-├── tests/
-│   └── HeartRateMonitor.Tests/               # 单元测试
-│       ├── HeartRateParserTests.cs           # 心率数据解析测试（12 个用例）
-│       ├── HeartRateCalculatorTests.cs       # 统计计算逻辑测试
-│       ├── HeartRateServiceTests.cs          # 心率服务测试
-│       └── DatabaseTests.cs                  # 数据库操作测试
-│
-└── docs/                                     # 项目设计文档
-    ├── 心率监控软件需求文档.md
-    ├── 01_架构设计文档.md
-    ├── 02_界面设计文档.md
-    ├── 03_接口设计文档.md
-    ├── 04_数据库设计文档.md
-    ├── 05_BLE通信设计文档.md
-    └── 06_测试设计文档.md
+├── samples/Breathing/                      # 外部插件示例（呼吸引导）
+├── tests/HeartRateMonitor.Tests/           # 62 个单元测试（7 个测试类）
+├── tools/HeartRateMonitor.UiSmoke/         # 界面冒烟检查 + 截图渲染（docs/screenshots）
+├── scripts/                                # 图标生成 / 快捷方式安装
+├── publish/                                # 发布产物（未跟踪）
+└── docs/                                   # 设计文档 + 界面截图
 ```
 
 ---
 
-## 支持设备
+## 配置说明
 
-以下设备已验证支持 BLE 心率广播功能：
+配置持久化在 SQLite 的 `Settings` 表（Key/Value），新增键无需改表结构。
 
-| 设备型号 | 心率广播 | 备注 |
-|----------|:--------:|------|
-| 华为手环 8 | ✅ | 推荐，开箱即用 |
-| 华为手环 9 | ✅ | 推荐，开箱即用 |
-| 华为 Watch GT2 | ✅ | 需在设置中手动开启心率广播 |
-| 华为 Watch GT3 | ✅ | 需在设置中手动开启心率广播 |
-| 华为 Watch GT4 | ✅ | 需在设置中手动开启心率广播 |
-| 华为 Watch Fit | ✅ | 需在设置中手动开启心率广播 |
-| 华为 Watch Fit 2 | ✅ | 需在设置中手动开启心率广播 |
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `Theme` | string | `Dark` | 主题：`Dark` / `Light` |
+| `AccentColor` | string | `#6366F1` | 强调色（8 个预设色可换） |
+| `OverlayOpacity` | double | `1.0` | 悬浮窗不透明度 0.0–1.0（0 = 背景完全透明） |
+| `WindowWidth` | double | `320` | 悬浮窗宽度 280–520 |
+| `WindowLeft` / `WindowTop` | double | — | 窗口位置 |
+| `MinimalMode` | bool | `false` | 是否进入极简模式 |
+| `MinimalShowChart` | bool | `true` | 极简模式下是否显示趋势曲线 |
+| `Widgets` | string | `""` | 组件布局（JSON 字符串数组，空 = 默认布局） |
+| `DisabledPlugins` | string | `""` | 已禁用的插件 id（`;` 分隔） |
+| `MinimizeToTray` | bool | `true` | 关闭窗口时最小化到托盘 |
+| `StartWithWindows` | bool | `false` | 开机自启 |
+| `AutoConnect` | bool | `true` | 启动自动连接上次设备 |
+| `LastDeviceId` / `LastDeviceName` | string | — | 上次连接设备 |
+| `HighHeartRateThreshold` | int | `160` | 心率上限提醒 |
+| `LowHeartRateThreshold` | int | `50` | 心率下限提醒 |
+| `EnableNotifications` | bool | `true` | 异常通知 |
+| `EnableSoundAlert` | bool | `false` | 声音提醒 |
+| `DataRetentionDays` | int | `30` | 数据保留天数 |
+| `Language` | string | `zh-CN` | 界面语言（预留给多语言） |
 
-> **注意：** 其他支持标准 BLE 心率服务（UUID: `0x180D`）的设备理论上也可兼容使用。
+---
+
+## 数据与日志路径
+
+| 内容 | 路径 |
+|------|------|
+| 数据库 | `%LOCALAPPDATA%\HeartRateMonitor\heartrate.db` |
+| 运行日志 | `%LOCALAPPDATA%\HeartRateMonitor\logs\app-yyyyMMdd.log` |
+| 启动打点 | `%LOCALAPPDATA%\HeartRateMonitor\startup.log` |
+| 托盘图标缓存 | `%LOCALAPPDATA%\HeartRateMonitor\tray.ico` |
+| 外部插件 | `%LOCALAPPDATA%\HeartRateMonitor\plugins\<插件名>\` |
+| 插件数据 | `%LOCALAPPDATA%\HeartRateMonitor\plugin-data\<插件 id>\` |
+
+> 日志单文件超过 4MB 自动轮转为 `.bak`，并清理 7 天前日志。
+
+---
+
+## 心率区间
+
+| 区间 | 心率范围 | 颜色 |
+|------|----------|------|
+| 放松 | < 100 BPM | `#6366F1` |
+| 燃脂 | 100 – 139 BPM | `#22C55E` |
+| 有氧 | 140 – 169 BPM | `#F59E0B` |
+| 无氧 | 170 – 199 BPM | `#F97316` |
+| 极限 | ≥ 200 BPM | `#EF4444` |
+
+区间定义集中在 `src/HeartRateMonitor.Core/Models/HeartRateZones.cs`（`Classify` / `IndexOf`），
+UI 颜色、组件区间条、区间标签全部来源于此，插件也可直接复用。
 
 ---
 
 ## BLE 协议说明
 
-应用基于 Bluetooth SIG 定义的标准心率服务（Heart Rate Profile）与设备通信。
+应用基于 Bluetooth SIG 标准心率服务（Heart Rate Profile）通信。
 
 ### 服务与特征值
 
 | 服务/特征 | UUID | 说明 |
 |-----------|------|------|
 | Heart Rate Service | `0x180D` | 心率服务 |
-| Heart Rate Measurement | `0x2A37` | 心率测量值（通知） |
+| Heart Rate Measurement | `0x2A37` | 心率测量值（Notify） |
 | Body Sensor Location | `0x2A38` | 传感器位置（可选读取） |
 | Heart Rate Control Point | `0x2A39` | 控制点（可选写入） |
 
 ### Heart Rate Measurement 数据格式
-
-`0x2A37` 特征值的数据格式如下：
 
 ```
 Byte 0: Flags
@@ -429,8 +537,8 @@ Byte 0: Flags
   ├── Bit 4:   RR-Interval Status
   └── Bit 5-7: Reserved
 
-Byte 1:      Heart Rate Value (UINT8, 0-255 BPM)
-  — 或 —
+Byte 1:      Heart Rate Value (UINT8)
+  或
 Byte 1-2:    Heart Rate Value (UINT16, 小端序)
 
 [可选] Energy Expended (2 bytes)
@@ -441,218 +549,157 @@ Byte 1-2:    Heart Rate Value (UINT16, 小端序)
 
 ```
 1. 启动 BLE 广告扫描 (BluetoothLEAdvertisementWatcher)
-         │
 2. 发现设备，过滤广播数据中的设备名称
-         │
-3. 用户选择目标设备
-         │
+3. 用户在设备组件中选择目标设备
 4. 建立 GATT 连接 (BluetoothLEDevice.FromIdAsync)
-         │
 5. 发现心率服务 (GetGattServicesForUuidAsync: 0x180D)
-         │
 6. 发现心率测量特征值 (GetCharacteristicsForUuidAsync: 0x2A37)
-         │
 7. 启用通知 (WriteClientCharacteristicConfigurationDescriptor: Notify)
-         │
-8. 接收心率数据 → 解析 → 更新界面
-         │
-9. 连接断开时 → 自动重连（最多 3 次，间隔 2s/4s/6s）
+8. 接收心率数据 → HeartRateParser 解析 → HeartRateSession 聚合 → 组件更新
+9. 连接断开 → 自动重连（最多 3 次，间隔 2s/4s/6s）
 ```
 
 ---
 
 ## 运行测试
 
-### 执行全部测试
-
 ```bash
 dotnet test tests/HeartRateMonitor.Tests/HeartRateMonitor.Tests.csproj
 ```
 
-### 执行特定测试类
+| 测试类 | 覆盖内容 |
+|--------|----------|
+| `HeartRateParserTests` | UINT8/UINT16 解析、Sensor Contact、RR-Interval、异常输入 |
+| `HeartRateCalculatorTests` | 统计计算、区间分类、报告生成 |
+| `HeartRateServiceTests` | 心率更新、历史管理、事件触发 |
+| `DatabaseTests` | CRUD、查询、数据库初始化 |
+| `WidgetLayoutCodecTests` | 组件布局 JSON 解析/序列化、损坏数据回退、去重 |
+| `HeartRateZonesTests` | 五区间边界、`Classify`/`IndexOf` 一致性、颜色合法性 |
+| `SettingsServiceTests` | WAL 模式、`MinimalShowChart`/透明度 0 往返、并发保存不出现 `database is locked` |
+
+> 当前共 **62 个用例**，全部通过（受限沙箱内 `vstest`/testhost 会因进程权限失败，可用反射运行器执行）。
+
+### 界面冒烟与截图
 
 ```bash
-dotnet test tests/HeartRateMonitor.Tests/HeartRateMonitor.Tests.csproj --filter "FullyQualifiedName~HeartRateParserTests"
+# 先退出正在运行的应用（单实例），再执行：
+dotnet run --project tools/HeartRateMonitor.UiSmoke             # 检查并刷新 docs/screenshots
+dotnet run --project tools/HeartRateMonitor.UiSmoke -- D:\shots # 输出到指定目录
 ```
 
-### 查看详细输出
-
-```bash
-dotnet test tests/HeartRateMonitor.Tests/HeartRateMonitor.Tests.csproj --verbosity normal
-```
-
-### 测试覆盖范围
-
-| 测试类 | 测试内容 | 用例数 |
-|--------|----------|--------|
-| `HeartRateParserTests` | UINT8/UINT16 解析、Sensor Contact、RR-Interval、异常输入 | 12 |
-| `HeartRateCalculatorTests` | 统计计算、区间分类、报告生成 | — |
-| `HeartRateServiceTests` | 心率更新、历史管理、事件触发 | — |
-| `DatabaseTests` | CRUD 操作、数据查询、数据库初始化 | — |
+工具复用真实启动流程（同一套 DI 单例、插件宿主、主窗口），逐项断言主题资源、深浅主题切换、插件启停、
+组件增删、极简模式与 0% 透明背景，并用 `RenderTargetBitmap` 渲染 8 张截图；结束前自动恢复用户设置。
+全部通过时输出 `ALL UI SMOKE CHECKS PASSED` 并以 0 退出，失败时列出具体检查项。
 
 ---
 
-## API 参考
+## 发布与体积
 
-### 核心接口
+| 发布方式 | 体积（v2.1） | 对比 v1 |
+|----------|------|---------|
+| 框架依赖单文件（`--self-contained false`） | exe 28.07 MB（目录 29.77 MB，含 `e_sqlite3.dll`） | v1 ≈ 36.0 MB（**-22%**） |
+| 自包含单文件 + 压缩（`EnableCompressionInSingleFile=true`） | exe 75.33 MB（目录 ≈ 85.4 MB） | v1 ≈ 99 MB |
+| 自包含单文件（不压缩） | ≈ 181 MB | — |
 
-#### IBleService
+打包 zip（`publish\`）：`HeartRate-v2.1.0-win-x64-framework-dependent.zip` ≈ 8.66 MB、`HeartRate-v2.1.0-win-x64-self-contained.zip` ≈ 74.45 MB。
 
-蓝牙低功耗设备管理服务。
+主要收益来自移除 SkiaSharp 原生库（`libSkiaSharp.dll` 约 9.6MB 且包体巨大）、Serilog 与第三方托盘库。
 
-```csharp
-public interface IBleService
-{
-    ConnectionState State { get; }
-    BleDevice? ConnectedDevice { get; }
-    bool IsScanning { get; }
+---
 
-    event EventHandler<HeartRateChangedEventArgs>? HeartRateReceived;
-    event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
-    event EventHandler<HeartRateAlertEventArgs>? HeartRateAlert;
+## 故障排查
 
-    Task<bool> RequestPermissionAsync();
-    Task StartScanningAsync();
-    Task StopScanningAsync();
-    Task ConnectAsync(BleDevice device);
-    Task DisconnectAsync();
-    Task<bool> AutoReconnectAsync();
-    IAsyncEnumerable<BleDevice> DiscoverDevicesAsync(CancellationToken cancellationToken = default);
-}
+### 扫描失败怎么办
+
+扫描前会检测蓝牙可用性并给出具体原因：
+
+| 情况 | 界面表现 | 处理方式 |
+|------|----------|----------|
+| 蓝牙开关已关闭 | 「蓝牙未开启」+ 提示说明 | 打开系统蓝牙后重试（点提示条中的「打开蓝牙设置」） |
+| 没有 BLE 适配器 | 「未检测到可用的低功耗蓝牙（BLE）适配器…」 | 检查蓝牙硬件与驱动 |
+| 系统拒绝访问 | 「系统拒绝了蓝牙访问…」 | 检查 Windows 隐私/蓝牙权限 |
+| 扫描中蓝牙被关闭/占用 | 「扫描已中断」+ 原因 | 关闭占用程序或重开蓝牙 |
+
+> 未打包桌面应用无法由程序自动打开蓝牙（`Radio.SetStateAsync` 返回 `DeniedByUser`），应用只负责检测与提示。
+
+> **v2.1 扫描规则**：除「有名称的可连接设备」外，只要广播里包含标准心率服务 `0x180D`（即使设备没有名字）也会被列出，名称显示为「心率传感器」，避免手环匿名广播时列表为空。
+
+### 设置保存失败怎么办
+
+v2.1 修复了两处与 SQLite 写入相关的问题：
+
+- 数据库启用 **WAL 模式** + `busy_timeout=15s` + 连接池，心率每秒写库不再与设置保存抢锁；
+- 设置保存改为**单事务批量写入**（`SettingsRepository.SetManyAsync`），失败时对 `SQLITE_BUSY/LOCKED` 自动重试 3 次。
+
+若仍提示「保存设置失败」，查看 `%LOCALAPPDATA%\HeartRateMonitor\logs\` 中的错误详情；确认磁盘未满、数据库文件未被其他程序独占。
+
+### 界面卡死/无响应
+
+v1 曾出现启动期死锁：在 UI 线程用 `.GetAwaiter().GetResult()` 等待内含 WinRT `await` 的方法是根因。
+修复约定（v2 继续遵守）：
+
+- 蓝牙权限检查与自动重连在后台异步执行，**不在 UI 线程等待**；
+- `BleService` 内 WinRT 调用一律 `AsTask().ConfigureAwait(false)`；
+- 数据库初始化、设置加载、插件初始化用 `Task.Run(...).GetAwaiter().GetResult()`；
+- BLE 事件（设备发现/连接状态/扫描失败）统一通过 `WidgetViewBase.RunOnUi` 切回 UI 线程，避免跨线程操作控件（v2.1 修复扫描列表不刷新的根因）。
+
+### 启动时提示“已经在运行”怎么办
+
+v2.1 起单实例行为已改为：
+
+1. **已有实例正常运行** → 新进程通知它把主窗口显示出来（即使窗口被隐藏到托盘），随后新进程静默退出，不再弹「已经在运行」；
+2. **已有实例卡死无响应**（例如上次异常退出留下的僵尸进程仍占用实例锁）→ 自动结束该进程并继续启动；
+3. 以上都失败时才提示「心率监控已经在运行」。
+
+若仍遇到卡死，可检查是否有残留进程并手动结束：
+
+```powershell
+Get-Process HeartRateMonitor.App -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
-#### IHeartRateService
+启动各阶段打点见 `%LOCALAPPDATA%\HeartRateMonitor\startup.log`（每行带进程号，便于区分多实例）。
 
-心率数据管理服务。
+若仍异常，查看启动打点日志定位阶段：
 
-```csharp
-public interface IHeartRateService
-{
-    int CurrentHeartRate { get; }
-    HeartRateData? LatestData { get; }
-    IReadOnlyList<HeartRateData> RecentHistory { get; }
-
-    event EventHandler<HeartRateChangedEventArgs>? HeartRateUpdated;
-
-    void UpdateHeartRate(HeartRateData data);
-    Task<HeartRateStatistics> GetStatisticsAsync(DateTime startTime, DateTime endTime);
-    Task<DailyReport> GetDailyReportAsync(DateTime date);
-    void ClearHistory();
-}
+```text
+%LOCALAPPDATA%\HeartRateMonitor\startup.log
+%LOCALAPPDATA%\HeartRateMonitor\logs\app-yyyyMMdd.log
 ```
 
-#### IDataService
+### 插件没有出现
 
-数据持久化服务。
+1. 确认目录结构正确：`plugins\<插件名>\plugin.json` + dll；
+2. 检查清单字段 `id` / `entryAssembly` / `entryType` 与程序集一致；
+3. 设置 → 功能插件 → **重新扫描**；
+4. 查看日志中的插件加载错误（插件列表会显示错误文字）。
 
-```csharp
-public interface IDataService
-{
-    Task InitializeAsync();
-    Task SaveHeartRateRecordAsync(HeartRateData data, string? deviceId = null);
-    Task<List<HeartRateData>> GetHeartRateRecordsAsync(DateTime startTime, DateTime endTime);
-    Task<DailyReport> GetDailyReportAsync(DateTime date);
-    Task SaveDeviceInfoAsync(BleDevice device);
-    Task<BleDevice?> GetLastConnectedDeviceAsync();
-    Task<List<BleDevice>> GetPairedDevicesAsync();
-    Task CleanupOldDataAsync(TimeSpan retention);
-}
-```
+---
 
-#### ISettingsService
+## 文档索引
 
-应用配置管理服务。
-
-```csharp
-public interface ISettingsService
-{
-    event EventHandler? SettingsChanged;
-
-    string? LastDeviceId { get; set; }
-    bool AutoConnect { get; set; }
-    int HighHeartRateThreshold { get; set; }
-    int LowHeartRateThreshold { get; set; }
-    bool EnableNotifications { get; set; }
-    double OverlayOpacity { get; set; }
-    string Theme { get; set; }
-    string Language { get; set; }
-    bool StartWithWindows { get; set; }
-    bool MinimizeToTray { get; set; }
-    int DataRetentionDays { get; set; }
-    bool MinimalMode { get; set; }
-
-    Task LoadAsync();
-    Task SaveAsync();
-    void ResetToDefaults();
-    void NotifySettingsChanged();
-}
-```
+| 文档 | 说明 |
+|------|------|
+| [docs/UI-REDESIGN.md](docs/UI-REDESIGN.md) | **v2 界面重构说明**：布局、主题系统、组件模型、交互规范 |
+| [docs/PLUGIN-DEVELOPMENT.md](docs/PLUGIN-DEVELOPMENT.md) | **插件开发指南**：契约、清单、生命周期、隔离、调试、发布 |
+| [docs/01_架构设计文档.md](docs/01_架构设计文档.md) | 分层架构与服务职责（v1 设计，v2 增补见文首） |
+| [docs/02_界面设计文档.md](docs/02_界面设计文档.md) | 界面设计（v1；v2 见 UI-REDESIGN） |
+| [docs/03_接口设计文档.md](docs/03_接口设计文档.md) | 接口契约 |
+| [docs/04_数据库设计文档.md](docs/04_数据库设计文档.md) | SQLite 表结构与仓储 |
+| [docs/05_BLE通信设计文档.md](docs/05_BLE通信设计文档.md) | BLE 连接与数据解析细节 |
+| [docs/06_测试设计文档.md](docs/06_测试设计文档.md) | 测试设计 |
+| [docs/07_前端样式规范.md](docs/07_前端样式规范.md) | 样式规范（v1） |
+| [docs/08_交互逻辑与前端表现规范.md](docs/08_交互逻辑与前端表现规范.md) | 交互规范（v1） |
+| [docs/心率监控软件需求文档.md](docs/心率监控软件需求文档.md) | 需求文档 |
 
 ---
 
 ## 贡献指南
 
-欢迎对本项目做出贡献！请遵循以下流程：
-
-### 如何贡献
-
-1. **Fork** 本仓库
-2. 创建你的功能分支
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. 提交你的更改
-   ```bash
-   git commit -m "feat: add amazing feature"
-   ```
-4. 推送到你的分支
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-5. 打开一个 **Pull Request**
-
-### 提交规范
-
-请使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范编写提交信息：
-
-| 前缀 | 说明 |
-|------|------|
-| `feat:` | 新功能 |
-| `fix:` | Bug 修复 |
-| `docs:` | 文档更新 |
-| `style:` | 代码格式调整（不影响逻辑） |
-| `refactor:` | 代码重构 |
-| `test:` | 测试相关 |
-| `chore:` | 构建/工具链变更 |
-
-**示例：**
-```
-feat: 添加心率报警声音提示功能
-fix: 修复 BLE 断连后 UI 未更新的问题
-docs: 更新 README 安装说明
-```
-
-### 开发环境
-
-1. 克隆仓库并还原依赖
-   ```bash
-   git clone https://github.com/<your-username>/HeartRate.git
-   cd HeartRate
-   dotnet restore src/HeartRateMonitor.App/HeartRateMonitor.App.csproj
-   ```
-2. 使用 Visual Studio 2022、JetBrains Rider 或 VS Code 打开项目
-3. 运行测试确保环境正常
-   ```bash
-   dotnet test tests/HeartRateMonitor.Tests/HeartRateMonitor.Tests.csproj
-   ```
-
-### Pull Request 要求
-
-- 确保所有测试通过
-- 新功能需附带对应的单元测试
-- 遵循现有代码风格和命名规范
-- 更新相关文档（如有必要）
-- PR 描述中说明改动内容和原因
+1. Fork 仓库并创建分支：`git checkout -b feature/amazing-feature`
+2. 提交遵循 [Conventional Commits](https://www.conventionalcommits.org/)：`feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`
+3. 确保 `dotnet build src/HeartRateMonitor.sln` 与测试通过
+4. 新功能附带单元测试；涉及插件契约的改动需同步更新 `docs/PLUGIN-DEVELOPMENT.md`
+5. 提交 Pull Request 并说明动机与改动
 
 ---
 
@@ -689,9 +736,7 @@ SOFTWARE.
 ## 致谢
 
 - [Bluetooth Heart Rate Profile Specification](https://www.bluetooth.com/specifications/specs/heart-rate-profile-1-0/) — Bluetooth SIG 心率服务规范
-- [Windows BLE API Documentation](https://learn.microsoft.com/en-us/uwp/api/windows.devices.bluetooth) — Windows 蓝牙 API 文档
+- [Windows BLE API Documentation](https://learn.microsoft.com/en-us/uwp/api/windows.devices.bluetooth)
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) — MVVM 框架
-- [LiveCharts2](https://github.com/beto-rodriguez/LiveCharts2) — 高性能 .NET 图表库
-- [Dapper](https://github.com/DapperLib/Dapper) — 轻量 ORM 框架
-- [Serilog](https://serilog.net/) — 结构化日志框架
-- [Hardcodet.NotifyIcon.Wpf](https://github.com/hardcodet/wpf-notifyicon) — WPF 系统托盘库
+- [Dapper](https://github.com/DapperLib/Dapper) — 轻量 ORM
+- [Segoe Fluent Icons](https://learn.microsoft.com/windows/apps/design/style/segoe-fluent-icons-font) — 界面图标字体
